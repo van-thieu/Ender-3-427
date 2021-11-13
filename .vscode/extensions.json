@@ -1,0 +1,6 @@
+{
+    "recommendations": [
+        "marlinfirmware.auto-build",
+        "platformio.platformio-ide"
+    ]
+}

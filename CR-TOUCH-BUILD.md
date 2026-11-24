@@ -22,10 +22,11 @@ Output: `.pio/build/STM32F103RE_creality/firmware.bin`
   - Probe signal: `PB1` (`Z_MIN_PROBE_PIN`, the 5-pin probe port)
   - Servo/actuator: `PB0` (`SERVO0_PIN`)
 - `#define BLTOUCH_DELAY 500` — extra command delay for the clone probe
-- `NOZZLE_TO_PROBE_OFFSET { -42, -10, 0 }` — for the CR-Touch bracket left of the nozzle
+- `NOZZLE_TO_PROBE_OFFSET { -30, 0, 0 }` — measured from the printer's live `M851`
+  (`X-30.00 Y0.00 Z-1.38`); X/Y match the physical bracket, Z is re-calibrated after flashing
 - `#define AUTO_BED_LEVELING_BILINEAR`, 5x5 grid
 - `#define Z_SAFE_HOMING`
-- `PROBING_MARGIN_LEFT/RIGHT 45`, `FRONT/BACK 15` so the offset probe stays on the bed
+- `PROBING_MARGIN_LEFT/RIGHT 35`, `FRONT/BACK 15` so the offset probe stays on the bed
 - `#define BABYSTEP_ZPROBE_OFFSET` — Z probe offset can be babystepped live
 - `Z_MAX_POS 350` — intentional: the printer has Creality's physical **Z-axis
   extension / "Z350" profiles kit** (the official firmware for this setup is named

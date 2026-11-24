@@ -1517,7 +1517,8 @@
  *     |    [-]    |
  *     O-- FRONT --+
  */
-#define NOZZLE_TO_PROBE_OFFSET { -42, -10, 0 } // (mm) CR-Touch bracket; set Z at runtime with M851
+#define NOZZLE_TO_PROBE_OFFSET { -30, 0, 0 } // (mm) CR-Touch bracket; matches the printer's current M851 X/Y.
+                                            // Z is calibrated at runtime with M851 (currently Z-1.38).
 
 // Most probes should stay away from the edges of the bed, but
 // with NOZZLE_AS_PROBE this can be negative for a wider probing area.

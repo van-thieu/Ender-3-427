@@ -63,7 +63,11 @@ void GcodeSuite::M936() {
   switch (ota) {
     case 2: TERN_(CREALITY_RTS, case 3:)
       BL24CXX::write(OTA_FLAG_EEPROM, &ota_update_flag, sizeof(ota_update_flag));
-      safe_delay(100);
+      // The Creality WiFi box waits ~1s for this acknowledgement before it
+      // starts streaming the firmware to the bootloader.
+      SERIAL_ECHOLNPGM("mcu reset ok");
+      SERIAL_FLUSH();
+      safe_delay(150);
       hal.reboot();
   }
 }

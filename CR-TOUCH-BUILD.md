@@ -1,8 +1,10 @@
-# Ender-3 / Creality v4.2.7 + CR-Touch firmware
+# Ender-3 / Creality v4.2.7 + CR-Touch build notes
 
-Built from **Marlin 2.1.2.10** using the official `Creality/Ender-3/CrealityV427`
-example configuration as the base, with the CR-Touch settings from the previous
-configuration carried over.
+English | [繁體中文](CR-TOUCH-BUILD.zh-TW.md) | [Русский](CR-TOUCH-BUILD.ru.md)
+
+Built from **Marlin 2.1.2.10** using the official
+`Creality/Ender-3/CrealityV427` example configuration as the base, with the
+CR-Touch settings from the previous configuration carried over.
 
 ## Build
 
@@ -12,8 +14,8 @@ python3 -m venv .venv
 .venv/bin/pio run -e STM32F103RE_creality
 ```
 
-Output: `.pio/build/STM32F103RE_creality/firmware.bin`
-(copied to `firmware/Ender3_4.2.7_CRTouch_Marlin2.1.2.10.bin`).
+Output: `.pio/build/STM32F103RE_creality/firmware.bin`.
+Ready-to-flash copies are kept in [`firmware/`](firmware/).
 
 ## Board / probe settings
 
@@ -22,56 +24,82 @@ Output: `.pio/build/STM32F103RE_creality/firmware.bin`
   - Probe signal: `PB1` (`Z_MIN_PROBE_PIN`, the 5-pin probe port)
   - Servo/actuator: `PB0` (`SERVO0_PIN`)
 - `#define BLTOUCH_DELAY 500` — extra command delay for the clone probe
-- `NOZZLE_TO_PROBE_OFFSET { -30, 0, 0 }` — measured from the printer's live `M851`
-  (`X-30.00 Y0.00 Z-1.38`); X/Y match the physical bracket, Z is re-calibrated after flashing
-- `#define AUTO_BED_LEVELING_BILINEAR`, 5x5 grid
+- `NOZZLE_TO_PROBE_OFFSET { -30, 0, 0 }` — measured from the printer's live
+  `M851` (`X-30.00 Y0.00 Z-1.38`); X/Y match the physical bracket, Z is
+  re-calibrated after flashing
+- `#define AUTO_BED_LEVELING_BILINEAR`, 5×5 grid
 - `#define Z_SAFE_HOMING`
 - `PROBING_MARGIN_LEFT/RIGHT 35`, `FRONT/BACK 15` so the offset probe stays on the bed
 - `#define BABYSTEP_ZPROBE_OFFSET` — Z probe offset can be babystepped live
+- `#define PROBE_OFFSET_WIZARD` — LCD-assisted Z-offset calibration
+  (`PROBE_OFFSET_WIZARD_START_Z -1.0`)
 - `Z_MIN_POS -5` — fixes the "nozzle can't reach the bed" issue: with a negative
-  probe Z offset (`M851 Z-1.38`) the nozzle must travel below Z=0 to touch the bed,
-  and the stock `Z_MIN_POS 0` software limit prevents that
+  probe Z offset (`M851 Z-1.38`) the nozzle must travel below Z=0 to touch the
+  bed, and the stock `Z_MIN_POS 0` software limit prevents that
 - `Z_MAX_POS 350` — intentional: the printer has Creality's physical **Z-axis
-  extension / "Z350" profiles kit** (the official firmware for this setup is named
-  `Ender-3 HD4.2.7-Z350-...`). Do not reduce this value to the stock 250.
-  (The currently installed firmware still reports Zmax 250 via `M211`.)
-
-## Remote (BFT) updates
-
-`BINARY_FILE_TRANSFER` and `CUSTOM_FIRMWARE_UPLOAD` are enabled. After this
-version is flashed once from the SD card, future firmware can be streamed to the
-printer's SD card over USB serial from the Creality WiFi box at
-`192.168.1.126` (telnet `root` / `cxswprin`, printer on `/dev/ttyUSB0`, 115200 baud)
-using Marlin's binary protocol (`M28 B1 ...`). Marlin reboots itself after the
-transfer so the 4.2.7 bootloader installs the new `.bin` automatically.
-
-- Each upload must use a **new unique `.bin` filename** — the Creality bootloader
-  remembers the previous name and will not flash the same name twice.
-- The box's `prt_com` daemon must be paused during the transfer so it doesn't
-  consume serial bytes; restart it afterwards (or reboot the box).
-- Helper scripts: `/tmp/box_telnet.py` (box shell) and `/tmp/printer_gcode.py`
-  (G-code over the box). A BFT relay/uploader can be added when needed.
+  extension / "Z350" profiles kit** (the official firmware for this setup is
+  named `Ender-3 HD4.2.7-Z350-...`). Do not reduce this to the stock 250.
+- `BINARY_FILE_TRANSFER` + `CUSTOM_FIRMWARE_UPLOAD` — Marlin binary transfer
+  capability (see "Remote updates" below for its practical limitations)
+- `OTA_FIRMWARE_UPDATE` + `M936` — Creality MCU-OTA command handler. `M936 V2`
+  now replies with `mcu reset ok` before rebooting, as the box expects.
 
 ## Flashing
 
-The 4.2.7 board boots from the `firmware.bin` / `Ender3...bin` file in the root of a
-FAT32-formatted SD card. Power off, insert the card, power on, and wait for the
-update to finish (the screen may go blank for a while). Remove the SD card and
-power-cycle afterwards.
+The 4.2.7 board boots from a `.bin` file in the root of a FAT32 SD card.
+
+1. Copy **one** firmware `.bin` to the card root.
+2. Use a **new unique filename** — the Creality bootloader remembers the last
+   filename and will not flash the same name twice.
+3. Ensure there are **no other `.bin` files** on the card (a partial `.bin`
+   from a failed transfer can be flashed by mistake).
+4. Power off, insert the card, power on, and wait for the update to finish.
+5. Remove the card and power-cycle the printer.
+
+Verify with `M115` (expect Marlin 2.1.2.10) and `M211`
+(expect `Zmin -5.00`, `Zmax 350.00`).
 
 ## After flashing (important)
 
-1. `M502` then `M500` to reset settings to the firmware defaults.
-2. Home all axes (`G28`), then deploy the probe with `M401` and stow with `M402`
-   to confirm the CR-Touch moves correctly.
-3. Measure the probe Z offset and set it, e.g. `M851 Z-2.50`, then `M500`.
-   (The `Z` value in `NOZZLE_TO_PROBE_OFFSET` is only a starting value; calibrate it.)
-4. Run `G29` to generate the mesh, then `M500` to save it.
-5. If the probe does not deploy: run `M280 P0 S10` (deploy) / `M280 P0 S90` (stow)
-   and check the brown/red/orange wiring. If the trigger is not detected, check the
-   black/white wires.
-6. If probing is flaky: increase `BLTOUCH_DELAY` or enable `BLTOUCH_FORCE_SW_MODE`
-   in `Marlin/Configuration_adv.h` and rebuild.
+1. `M502` then `M500` — reset settings to firmware defaults.
+2. Home all axes (`G28`), then deploy/stow the probe with `M401` / `M402` to
+   confirm the CR-Touch moves correctly.
+3. Set the Z offset, e.g. `M851 Z-1.38`, then `M500`.
+   Or use the LCD wizard: **Motion → Bed Leveling → Probe Offsets (Wizard)**.
+   (`Z` in `NOZZLE_TO_PROBE_OFFSET` is only a starting value.)
+4. Run `G29` to build the mesh, then `M500` to save it.
+5. Fine-tune the first layer with babystepping while printing.
+
+### Troubleshooting the probe
+
+- If the probe does not deploy: `M280 P0 S10` (deploy) / `M280 P0 S90` (stow)
+  and check the brown/red/orange wiring.
+- If the trigger is not detected, check the black/white wires.
+- If probing is flaky: increase `BLTOUCH_DELAY` or enable
+  `BLTOUCH_FORCE_SW_MODE` in `Marlin/Configuration_adv.h` and rebuild.
+
+## Remote updates and the Creality WiFi box
+
+The box exposes:
+
+- an HTTP status API on port 81 (`/protocal.csp?fname=Info&opt=main&function=get`),
+- anonymous FTP to its SD card,
+- a telnet shell (credentials are device-specific and intentionally omitted here).
+
+It is useful for **live monitoring, G-code control, and calibration**. However,
+**remote firmware flashing is not reliable on this hardware**:
+
+- The box's built-in MCU OTA sends `M936 V2` and waits for `mcu reset ok`, then
+  streams the firmware. On the 4.2.7 board the bootloader never enters OTA mode,
+  so the streamed bytes are interpreted by Marlin as invalid commands.
+  Creality's stock 4.2.7 firmware contains no `M936` handler.
+- Marlin's BFT (`M28 B1`) path was prototyped with a retry-capable uploader. It
+  moves most packets, but the box's `prt_com` daemon interleaves its own
+  `M105`/`M27` polling into the serial stream, causing packet corruption. No
+  reliable uploader is available yet.
+
+Use the SD card for firmware updates. Do not leave a partially uploaded `.bin`
+on a card that will be inserted into the printer.
 
 ## Optional
 

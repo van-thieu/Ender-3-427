@@ -36,6 +36,22 @@ Output: `.pio/build/STM32F103RE_creality/firmware.bin`
   `Ender-3 HD4.2.7-Z350-...`). Do not reduce this value to the stock 250.
   (The currently installed firmware still reports Zmax 250 via `M211`.)
 
+## Remote (BFT) updates
+
+`BINARY_FILE_TRANSFER` and `CUSTOM_FIRMWARE_UPLOAD` are enabled. After this
+version is flashed once from the SD card, future firmware can be streamed to the
+printer's SD card over USB serial from the Creality WiFi box at
+`192.168.1.126` (telnet `root` / `cxswprin`, printer on `/dev/ttyUSB0`, 115200 baud)
+using Marlin's binary protocol (`M28 B1 ...`). Marlin reboots itself after the
+transfer so the 4.2.7 bootloader installs the new `.bin` automatically.
+
+- Each upload must use a **new unique `.bin` filename** — the Creality bootloader
+  remembers the previous name and will not flash the same name twice.
+- The box's `prt_com` daemon must be paused during the transfer so it doesn't
+  consume serial bytes; restart it afterwards (or reboot the box).
+- Helper scripts: `/tmp/box_telnet.py` (box shell) and `/tmp/printer_gcode.py`
+  (G-code over the box). A BFT relay/uploader can be added when needed.
+
 ## Flashing
 
 The 4.2.7 board boots from the `firmware.bin` / `Ender3...bin` file in the root of a

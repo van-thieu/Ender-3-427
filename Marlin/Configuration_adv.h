@@ -1727,12 +1727,15 @@
    */
   //#define CONFIGURATION_EMBEDDING
 
-  // Add an optimized binary file transfer mode, initiated with 'M28 B1'
-  //#define BINARY_FILE_TRANSFER
+  // Add an optimized binary file transfer mode, initiated with 'M28 B1'.
+  // Enabled so future firmware updates can be pushed to the printer's SD card
+  // over the USB serial link from the Creality WiFi box, without handling the card.
+  #define BINARY_FILE_TRANSFER
 
   #if ENABLED(BINARY_FILE_TRANSFER)
-    // Include extra facilities (e.g., 'M20 F') supporting firmware upload via BINARY_FILE_TRANSFER
-    //#define CUSTOM_FIRMWARE_UPLOAD
+    // Include extra facilities (e.g., 'M20 F') supporting firmware upload via BINARY_FILE_TRANSFER.
+    // Also makes Marlin reboot itself after an upload so the bootloader installs the firmware.
+    #define CUSTOM_FIRMWARE_UPLOAD
   #endif
 
   /**

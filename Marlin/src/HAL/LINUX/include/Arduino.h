@@ -28,6 +28,9 @@
 
 #include <pinmapping.h>
 
+#define strlcpy(A, B, C)   strncpy(A, B, (C) - 1)
+#define strlcpy_P(A, B, C) strncpy_P(A, B, (C) - 1)
+
 #define HIGH         0x01
 #define LOW          0x00
 
@@ -59,10 +62,9 @@ typedef uint8_t byte;
 #endif
 
 #define sq(v) ((v) * (v))
-#define square(v) sq(v)
 #define constrain(value, arg_min, arg_max) ((value) < (arg_min) ? (arg_min) :((value) > (arg_max) ? (arg_max) : (value)))
 
-//Interrupts
+// Interrupts
 void cli(); // Disable
 void sei(); // Enable
 void attachInterrupt(uint32_t pin, void (*callback)(), uint32_t mode);
@@ -74,8 +76,8 @@ extern "C" {
 }
 
 // Time functions
-extern "C" void delay(const int milis);
-void _delay_ms(const int delay);
+extern "C" void delay(const int ms);
+void _delay_ms(const int ms);
 void delayMicroseconds(unsigned long);
 uint32_t millis();
 

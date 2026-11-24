@@ -23,10 +23,12 @@
 
 /**
  * MKS BASE v1.6 with A4982 stepper drivers and digital micro-stepping
+ * Schematic: https://github.com/makerbase-mks/MKS-BASE/blob/master/hardware/MKS%20Base%20V1.6_004/MKS%20Base%20V1.6_004%20SCH.pdf
+ * ATmega2560
  */
 
 #if HOTENDS > 2 || E_STEPPERS > 2
-  #error "MKS BASE 1.6 only supports up to 2 hotends / E-steppers. Comment out this line to continue."
+  #error "MKS BASE 1.6 supports up to 2 hotends / E steppers."
 #endif
 
 #define BOARD_INFO_NAME "MKS BASE 1.6"
@@ -35,7 +37,7 @@
 //
 // Servos
 //
-#define SERVO1_PIN                            12  // Digital 12 / Pin 25
+#define SERVO1_PIN                            12
 
 //
 // Omitted RAMPS pins

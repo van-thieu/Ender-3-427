@@ -83,11 +83,11 @@
 #define HEATER_0_PIN                        PD12  // HOT-END
 #define HEATER_BED_PIN                      PG11  // HOT-BED
 
-#ifndef FAN_PIN
-  #define FAN_PIN                           PG14  // MAIN BOARD FAN
+#ifndef FAN0_PIN
+  #define FAN0_PIN                          PG14  // MAIN BOARD FAN
 #endif
 
-#define FAN_SOFT_PWM
+#define FAN_SOFT_PWM_REQUIRED
 
 //
 // Temperature Sensors
@@ -102,18 +102,18 @@
 
   #if ENABLED(REPRAPWORLD_GRAPHICAL_LCD)
     #define LCD_PINS_RS                     PD1   // 49  // CS chip select /SS chip slave select
-    #define LCD_PINS_ENABLE                 PD3   // 51  // SID (MOSI)
+    #define LCD_PINS_EN                     PD3   // 51  // SID (MOSI)
     #define LCD_PINS_D4                     PD4   // 52  // SCK (CLK) clock
-  #elif BOTH(IS_NEWPANEL, PANEL_ONE)
+  #elif ALL(IS_NEWPANEL, PANEL_ONE)
     #define LCD_PINS_RS                     PB8
-    #define LCD_PINS_ENABLE                 PD2
+    #define LCD_PINS_EN                     PD2
     #define LCD_PINS_D4                     PB12
     #define LCD_PINS_D5                     PB13
     #define LCD_PINS_D6                     PB14
     #define LCD_PINS_D7                     PB15
   #else
     #define LCD_PINS_RS                     PB8
-    #define LCD_PINS_ENABLE                 PD2
+    #define LCD_PINS_EN                     PD2
     #define LCD_PINS_D4                     PB12
     #define LCD_PINS_D5                     PB13
     #define LCD_PINS_D6                     PB14
@@ -161,6 +161,7 @@
       #define LCD_SDSS                      PD5   // 53
       #define SD_DETECT_PIN                 -1
       #define KILL_PIN                      PC9   // 41
+      #undef LCD_PINS_EN                          // not used, causes false pin conflict report
 
     #elif ENABLED(LCD_I2C_VIKI)
 
@@ -178,7 +179,6 @@
       // Pins for DOGM SPI LCD Support
       #define DOGLCD_A0                     PC12  // 44
       #define DOGLCD_CS                     PC13  // 45
-      #define LCD_SCREEN_ROT_180
 
       #define BTN_EN1                       PB6   // 22
       #define BTN_EN2                       PA7   //  7
@@ -191,6 +191,8 @@
 
       #define STAT_LED_RED_PIN              PC0   // 32
       #define STAT_LED_BLUE_PIN             PC3   // 35
+
+      #define LCD_SCREEN_ROTATE              180  // 0, 90, 180, 270
 
     #elif ENABLED(ELB_FULL_GRAPHIC_CONTROLLER)
       #define BTN_EN1                       PC3   // 35
@@ -214,17 +216,15 @@
       #define SDSS                          PD5   // 53
 
       #define KILL_PIN                      PE0   // 64
-      // GLCD features
-      // Uncomment screen orientation
-      //#define LCD_SCREEN_ROT_90
-      //#define LCD_SCREEN_ROT_180
-      //#define LCD_SCREEN_ROT_270
+
       // The encoder and click button
       #define BTN_EN1                       PC8   // 40
       #define BTN_EN2                       PD15  // 63
       #define BTN_ENC                       PD11  // 59
       // not connected to a pin
       #define SD_DETECT_PIN                 PD1   // 49
+
+      //#define LCD_SCREEN_ROTATE            180  // 0, 90, 180, 270
 
     #else
 

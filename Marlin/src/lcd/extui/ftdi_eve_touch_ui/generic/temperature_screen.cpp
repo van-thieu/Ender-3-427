@@ -50,13 +50,13 @@ void TemperatureScreen::onRedraw(draw_mode_t what) {
     #elif HOTENDS == 1
       w.adjuster(   2, GET_TEXT_F(MSG_NOZZLE),   getTargetTemp_celsius(E0));
     #else
-      w.adjuster(   2, F(LCD_STR_E0), getTargetTemp_celsius(E0));
-      w.adjuster(   4, F(LCD_STR_E1), getTargetTemp_celsius(E1));
+      w.adjuster(   2, F(STR_E0), getTargetTemp_celsius(E0));
+      w.adjuster(   4, F(STR_E1), getTargetTemp_celsius(E1));
       #if HOTENDS > 2
-        w.adjuster( 6, F(LCD_STR_E2), getTargetTemp_celsius(E2));
+        w.adjuster( 6, F(STR_E2), getTargetTemp_celsius(E2));
       #endif
       #if HOTENDS > 3
-        w.adjuster( 8, F(LCD_STR_E3), getTargetTemp_celsius(E3));
+        w.adjuster( 8, F(STR_E3), getTargetTemp_celsius(E3));
       #endif
     #endif
   #endif
@@ -66,7 +66,7 @@ void TemperatureScreen::onRedraw(draw_mode_t what) {
   #if HAS_HEATED_CHAMBER
     w.adjuster(    22, GET_TEXT_F(MSG_CHAMBER), getTargetTemp_celsius(CHAMBER));
   #endif
-  #if HAS_FAN
+  #if HAS_FAN0
     w.color(fan_speed).units(GET_TEXT_F(MSG_UNITS_PERCENT));
     w.adjuster(    10, GET_TEXT_F(MSG_FAN_SPEED), getTargetFan_percent(FAN0));
   #endif

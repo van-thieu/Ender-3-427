@@ -25,14 +25,14 @@
 #include "env_validate.h"
 
 #if HOTENDS > 2 || E_STEPPERS > 2
-  #error "LERDGE S supports up to 2 hotends / E-steppers."
+  #error "LERDGE S supports up to 2 hotends / E steppers."
 #endif
 
 #define BOARD_INFO_NAME      "Lerdge S"
 #define DEFAULT_MACHINE_NAME "LERDGE"
 
-#define STEP_TIMER                             4
-#define TEMP_TIMER                             2
+#define STEP_TIMER  4
+#define TEMP_TIMER  2
 
 #define HAS_OTG_USB_HOST_SUPPORT                  // USB Flash Drive support
 
@@ -122,7 +122,7 @@
 #define HEATER_1_PIN                        PA1
 #define HEATER_BED_PIN                      PA3
 
-#define FAN_PIN                             PA15  // heater 0 fan 1
+#define FAN0_PIN                            PA15  // heater 0 fan 1
 #define FAN1_PIN                            PB10  // heater 1 fan 2
 #define FAN2_PIN                            PF5   // heater 0 fan 2 and heater 1 fan 1 (two sockets, switched together)
 
@@ -133,8 +133,10 @@
 //
 // Průša i3 MK2 Multi Material Multiplexer Support
 //
-//#define E_MUX0_PIN                        -1
-//#define E_MUX1_PIN                        -1
+#if HAS_PRUSA_MMU1
+  //#define E_MUX0_PIN                      -1
+  //#define E_MUX1_PIN                      -1
+#endif
 
 //
 // LED / Lighting
@@ -158,10 +160,10 @@
 //
 // SD support
 //
-#define SDIO_SUPPORT
+#define ONBOARD_SDIO
 #define SDIO_CLOCK                       4800000
 #define SD_DETECT_PIN                       PG15
-#if DISABLED(SDIO_SUPPORT)
+#if DISABLED(ONBOARD_SDIO)
   #define SOFTWARE_SPI
   #define SD_SCK_PIN                        PC12
   #define SD_MISO_PIN                       PC8
@@ -184,15 +186,15 @@
   #define EEPROM_SCK_PIN                    PB13  // datasheet: CLK pin, found with multimeter, not tested
   #define EEPROM_MISO_PIN                   PB14  // datasheet: DO pin, found with multimeter, not tested
   #define EEPROM_MOSI_PIN                   PB15  // datasheet: DI pin, found with multimeter, not tested
-  #define EEPROM_PAGE_SIZE               0x1000U  // 4KB (from datasheet)
-  #define MARLIN_EEPROM_SIZE 16UL * (EEPROM_PAGE_SIZE)   // Limit to 64KB for now...
+  #define EEPROM_PAGE_SIZE               0x1000U  // 4K (from datasheet)
+  #define MARLIN_EEPROM_SIZE 16UL * (EEPROM_PAGE_SIZE)  // Limit to 64K for now...
 #elif ENABLED(I2C_EEPROM)                         // FM24CL64BG (CYP1813) 64Kbit F-RAM
   #define SOFT_I2C_EEPROM                         // Force the use of Software I2C
   #define I2C_SDA_PIN                       PG13
   #define I2C_SCL_PIN                       PG14  // To be confirmed on the Lerdge S, but probably same as the K
-  #define MARLIN_EEPROM_SIZE             0x10000
+  #define MARLIN_EEPROM_SIZE             0x2000U  // 8K
 #else
-  #define MARLIN_EEPROM_SIZE              0x800U  // On SD, Limit to 2KB, require this amount of RAM
+  #define MARLIN_EEPROM_SIZE              0x800U  // On SD, Limit to 2K, require this amount of RAM
 #endif
 
 //
@@ -207,9 +209,9 @@
   #define TFT_RESET_PIN                     PD6
   #define TFT_BACKLIGHT_PIN                 PD3
 
+  // TODO: See if FSMC DMA can work
   #define FSMC_CS_PIN                       PD7
   #define FSMC_RS_PIN                       PD11
-
   #define TFT_CS_PIN                 FSMC_CS_PIN
   #define TFT_RS_PIN                 FSMC_RS_PIN
 

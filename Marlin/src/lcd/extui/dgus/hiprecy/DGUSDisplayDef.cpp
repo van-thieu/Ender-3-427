@@ -63,7 +63,7 @@ const uint16_t VPList_Main[] PROGMEM = {
   VP_XPos, VP_YPos, VP_ZPos,
   VP_Fan0_Percentage,
   VP_Feedrate_Percentage,
-  #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
+  #if ENABLED(SET_PROGRESS_PERCENT)
     VP_PrintProgress_Percentage,
   #endif
   0x0000
@@ -222,12 +222,12 @@ const uint16_t VPList_SDPrintTune[] PROGMEM = {
 };
 
 const uint16_t VPList_StepPerMM[] PROGMEM = {
-  VP_X_STEP_PER_MM
-  , VP_Y_STEP_PER_MM
-  , VP_Z_STEP_PER_MM
-  OPTARG(HAS_HOTEND,       VP_E0_STEP_PER_MM)
-  OPTARG(HAS_MULTI_HOTEND, VP_E1_STEP_PER_MM)
-  , 0x0000
+  VP_X_STEP_PER_MM,
+  VP_Y_STEP_PER_MM,
+  VP_Z_STEP_PER_MM,
+  OPTITEM(HAS_HOTEND,       VP_E0_STEP_PER_MM)
+  OPTITEM(HAS_MULTI_HOTEND, VP_E1_STEP_PER_MM)
+  0x0000
 };
 
 const uint16_t VPList_PIDE0[] PROGMEM = {
@@ -317,7 +317,7 @@ const struct DGUS_VP_Variable ListOfVP[] PROGMEM = {
   // Helper to detect touch events
   VPHELPER(VP_SCREENCHANGE, nullptr, ScreenHandler.ScreenChangeHook, nullptr),
   VPHELPER(VP_SCREENCHANGE_ASK, nullptr, ScreenHandler.ScreenChangeHookIfIdle, nullptr),
-  #if ENABLED(SDSUPPORT)
+  #if HAS_MEDIA
     VPHELPER(VP_SCREENCHANGE_WHENSD, nullptr, ScreenHandler.ScreenChangeHookIfSD, nullptr),
   #endif
   VPHELPER(VP_CONFIRMED, nullptr, ScreenHandler.ScreenConfirmedOK, nullptr),
@@ -435,7 +435,7 @@ const struct DGUS_VP_Variable ListOfVP[] PROGMEM = {
   #endif
 
   // SDCard File listing.
-  #if ENABLED(SDSUPPORT)
+  #if HAS_MEDIA
     VPHELPER(VP_SD_ScrollEvent, nullptr, ScreenHandler.DGUSLCD_SD_ScrollFilelist, nullptr),
     VPHELPER(VP_SD_FileSelected, nullptr, ScreenHandler.DGUSLCD_SD_FileSelected, nullptr),
     VPHELPER(VP_SD_FileSelectConfirm, nullptr, ScreenHandler.DGUSLCD_SD_StartPrint, nullptr),

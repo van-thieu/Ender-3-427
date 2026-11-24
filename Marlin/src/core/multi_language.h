@@ -45,6 +45,7 @@ typedef const char Language_Str[];
 
 // Set unused languages equal to each other so the
 // compiler can optimize away the conditionals.
+#define LCD_LANGUAGE_1 LCD_LANGUAGE
 #ifndef LCD_LANGUAGE_2
   #define LCD_LANGUAGE_2 LCD_LANGUAGE
 #endif
@@ -63,6 +64,9 @@ typedef const char Language_Str[];
 
 #if NUM_LANGUAGES > 1
   #define HAS_MULTI_LANGUAGE 1
+  #if HAS_MARLINUI_MENU
+    #define HAS_MENU_MULTI_LANGUAGE 1
+  #endif
   #define GET_TEXT(MSG) ( \
     ui.language == 4 ? GET_LANG(LCD_LANGUAGE_5)::MSG : \
     ui.language == 3 ? GET_LANG(LCD_LANGUAGE_4)::MSG : \
@@ -80,10 +84,14 @@ typedef const char Language_Str[];
 #endif
 #define GET_TEXT_F(MSG) FPSTR(GET_TEXT(MSG))
 
+#define GET_EN_TEXT(MSG) GET_LANG(en)::MSG
+#define GET_EN_TEXT_F(MSG) FPSTR(GET_EN_TEXT(MSG))
+
 #define GET_LANGUAGE_NAME(INDEX) GET_LANG(LCD_LANGUAGE_##INDEX)::LANGUAGE
 #define LANG_CHARSIZE GET_TEXT(CHARSIZE)
 #define USE_WIDE_GLYPH (LANG_CHARSIZE > 2)
 
+// The final "\0" is added invisibly by the compiler
 #define MSG_1_LINE(A)     A "\0"   "\0"
 #define MSG_2_LINE(A,B)   A "\0" B "\0"
 #define MSG_3_LINE(A,B,C) A "\0" B "\0" C

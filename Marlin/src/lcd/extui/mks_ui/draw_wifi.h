@@ -22,9 +22,8 @@
 #pragma once
 
 #ifdef __cplusplus
-  extern "C" { /* C-declarations for C++ */
+  extern "C" {
 #endif
-
 
 void lv_draw_wifi();
 void lv_clear_wifi();

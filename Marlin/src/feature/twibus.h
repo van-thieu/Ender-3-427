@@ -74,7 +74,6 @@ class TWIBus {
      */
     uint8_t buffer[TWIBUS_BUFFER_SIZE];
 
-
   public:
     /**
      * @brief Target device address
@@ -244,11 +243,11 @@ class TWIBus {
       static void debug(FSTR_P const func, char c);
       static void debug(FSTR_P const func, char adr[]);
     #else
-      static inline void debug(FSTR_P const, uint32_t) {}
-      static inline void debug(FSTR_P const, char) {}
-      static inline void debug(FSTR_P const, char[]) {}
+      static void debug(FSTR_P const, uint32_t) {}
+      static void debug(FSTR_P const, char) {}
+      static void debug(FSTR_P const, char[]) {}
     #endif
-    static inline void debug(FSTR_P const func, uint8_t v) { debug(func, (uint32_t)v); }
+    static void debug(FSTR_P const func, uint8_t v) { debug(func, (uint32_t)v); }
 };
 
 extern TWIBus i2c;

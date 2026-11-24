@@ -28,6 +28,7 @@
 
 #include "probe_temp_comp.h"
 #include <math.h>
+#include "../module/temperature.h"
 
 ProbeTempComp ptc;
 
@@ -62,15 +63,16 @@ constexpr temp_calib_t ProbeTempComp::cali_info[TSI_COUNT];
 
 uint8_t ProbeTempComp::calib_idx; // = 0
 float ProbeTempComp::init_measurement; // = 0.0
+bool ProbeTempComp::enabled = true;
 
 void ProbeTempComp::reset() {
-  TERN_(PTC_PROBE, LOOP_L_N(i, PTC_PROBE_COUNT) z_offsets_probe[i] = z_offsets_probe_default[i]);
-  TERN_(PTC_BED, LOOP_L_N(i, PTC_BED_COUNT) z_offsets_bed[i] = z_offsets_bed_default[i]);
-  TERN_(PTC_HOTEND, LOOP_L_N(i, PTC_HOTEND_COUNT) z_offsets_hotend[i] = z_offsets_hotend_default[i]);
+  TERN_(PTC_PROBE, for (uint8_t i = 0; i < PTC_PROBE_COUNT; ++i) z_offsets_probe[i] = z_offsets_probe_default[i]);
+  TERN_(PTC_BED, for (uint8_t i = 0; i < PTC_BED_COUNT; ++i) z_offsets_bed[i] = z_offsets_bed_default[i]);
+  TERN_(PTC_HOTEND, for (uint8_t i = 0; i < PTC_HOTEND_COUNT; ++i) z_offsets_hotend[i] = z_offsets_hotend_default[i]);
 }
 
 void ProbeTempComp::clear_offsets(const TempSensorID tsi) {
-  LOOP_L_N(i, cali_info[tsi].measurements)
+  for (uint8_t i = 0; i < cali_info[tsi].measurements; ++i)
     sensor_z_offsets[tsi][i] = 0;
   calib_idx = 0;
 }
@@ -82,7 +84,7 @@ bool ProbeTempComp::set_offset(const TempSensorID tsi, const uint8_t idx, const 
 }
 
 void ProbeTempComp::print_offsets() {
-  LOOP_L_N(s, TSI_COUNT) {
+  for (uint8_t s = 0; s < TSI_COUNT; ++s) {
     celsius_t temp = cali_info[s].start_temp;
     for (int16_t i = -1; i < cali_info[s].measurements; ++i) {
       SERIAL_ECHOF(
@@ -169,6 +171,13 @@ bool ProbeTempComp::finish_calibration(const TempSensorID tsi) {
   return true;
 }
 
+void ProbeTempComp::apply_compensation(float &meas_z) {
+  if (!enabled) return;
+  TERN_(PTC_BED,    compensate_measurement(TSI_BED,   thermalManager.degBed(),     meas_z));
+  TERN_(PTC_PROBE,  compensate_measurement(TSI_PROBE, thermalManager.degProbe(),   meas_z));
+  TERN_(PTC_HOTEND, compensate_measurement(TSI_EXT,   thermalManager.degHotend(0), meas_z));
+}
+
 void ProbeTempComp::compensate_measurement(const TempSensorID tsi, const celsius_t temp, float &meas_z) {
   const uint8_t measurements = cali_info[tsi].measurements;
   const celsius_t start_temp = cali_info[tsi].start_temp,
@@ -223,7 +232,7 @@ bool ProbeTempComp::linear_regression(const TempSensorID tsi, float &k, float &d
         sum_xy = 0, sum_y = 0;
 
   float xi = static_cast<float>(start_temp);
-  LOOP_L_N(i, calib_idx) {
+  for (uint8_t i = 0; i < calib_idx; ++i) {
     const float yi = static_cast<float>(data[i]);
     xi += res_temp;
     sum_x += xi;

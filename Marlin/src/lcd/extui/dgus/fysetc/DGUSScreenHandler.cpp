@@ -40,9 +40,9 @@
   #include "../../../../feature/powerloss.h"
 #endif
 
-#if ENABLED(SDSUPPORT)
+#if HAS_MEDIA
 
-  static ExtUI::FileList filelist;
+  extern ExtUI::FileList filelist;
 
   void DGUSScreenHandler::DGUSLCD_SD_FileSelected(DGUS_VP_Variable &var, void *val_ptr) {
     uint16_t touched_nr = (int16_t)swap16(*(uint16_t*)val_ptr) + top_file;
@@ -124,7 +124,7 @@
     ) GotoScreen(DGUSLCD_SCREEN_MAIN);
   }
 
-#endif // SDSUPPORT
+#endif // HAS_MEDIA
 
 void DGUSScreenHandler::ScreenChangeHook(DGUS_VP_Variable &var, void *val_ptr) {
   uint8_t *tmp = (uint8_t*)val_ptr;
@@ -190,7 +190,7 @@ void DGUSScreenHandler::HandleManualMove(DGUS_VP_Variable &var, void *val_ptr) {
 
   if (!movevalue) {
     // homing
-    DEBUG_ECHOPGM(" homing ", AS_CHAR(axiscode));
+    DEBUG_ECHOPGM(" homing ", C(axiscode));
     char buf[6] = "G28 X";
     buf[4] = axiscode;
     //DEBUG_ECHOPGM(" ", buf);
@@ -201,7 +201,7 @@ void DGUSScreenHandler::HandleManualMove(DGUS_VP_Variable &var, void *val_ptr) {
   }
   else {
     // movement
-    DEBUG_ECHOPGM(" move ", AS_CHAR(axiscode));
+    DEBUG_ECHOPGM(" move ", C(axiscode));
     bool old_relative_mode = relative_mode;
     if (!relative_mode) {
       //DEBUG_ECHOPGM(" G91");
@@ -237,7 +237,7 @@ void DGUSScreenHandler::HandleManualMove(DGUS_VP_Variable &var, void *val_ptr) {
   return;
 
   cannotmove:
-    DEBUG_ECHOLNPGM(" cannot move ", AS_CHAR(axiscode));
+    DEBUG_ECHOLNPGM(" cannot move ", C(axiscode));
     return;
 }
 
@@ -268,7 +268,7 @@ void DGUSScreenHandler::HandleManualMove(DGUS_VP_Variable &var, void *val_ptr) {
         #endif
     }
 
-    DEBUG_ECHOLNPAIR_F("V3:", newvalue);
+    DEBUG_ECHOLNPGM("V3:", newvalue);
     *(float *)var.memadr = newvalue;
 
     skipVP = var.VP; // don't overwrite value the next update time as the display might autoincrement in parallel
@@ -333,9 +333,9 @@ void DGUSScreenHandler::HandleManualMove(DGUS_VP_Variable &var, void *val_ptr) {
     if (filament_data.action == 0) { // Go back to utility screen
       #if HAS_HOTEND
         thermalManager.setTargetHotend(e_temp, ExtUI::extruder_t::E0);
-      #endif
-      #if HAS_MULTI_HOTEND
-        thermalManager.setTargetHotend(e_temp, ExtUI::extruder_t::E1);
+        #if HAS_MULTI_HOTEND
+          thermalManager.setTargetHotend(e_temp, ExtUI::extruder_t::E1);
+        #endif
       #endif
       GotoScreen(DGUSLCD_SCREEN_UTILITY);
     }
@@ -348,7 +348,7 @@ void DGUSScreenHandler::HandleManualMove(DGUS_VP_Variable &var, void *val_ptr) {
               thermalManager.setTargetHotend(e_temp, filament_data.extruder);
               break;
           #endif
-          #if HAS_MULTI_EXTRUDER
+          #if HAS_MULTI_HOTEND
             case VP_E1_FILAMENT_LOAD_UNLOAD:
               filament_data.extruder = ExtUI::extruder_t::E1;
               thermalManager.setTargetHotend(e_temp, filament_data.extruder);
@@ -413,14 +413,10 @@ bool DGUSScreenHandler::loop() {
 
     if (!booted && ELAPSED(ms, BOOTSCREEN_TIMEOUT)) {
       booted = true;
-
-      if (TERN0(POWER_LOSS_RECOVERY, recovery.valid()))
-        GotoScreen(DGUSLCD_SCREEN_POWER_LOSS);
-      else
-        GotoScreen(DGUSLCD_SCREEN_MAIN);
+      GotoScreen(TERN0(POWER_LOSS_RECOVERY, recovery.valid()) ? DGUSLCD_SCREEN_POWER_LOSS : DGUSLCD_SCREEN_MAIN);
     }
-
   #endif
+
   return IsScreenComplete();
 }
 

@@ -33,6 +33,10 @@
   #include "../../module/tool_change.h"
 #endif
 
+#if ENABLED(BLTOUCH)
+  #include "../../feature/bltouch.h"
+#endif
+
 #define DEBUG_OUT ENABLED(DEBUG_LEVELING_FEATURE)
 #include "../../core/debug_out.h"
 
@@ -53,8 +57,9 @@
  *               41 - Counter-Clockwise M4
  *               50 - Clockwise M5
  *               51 - Counter-Clockwise M5
- **/
+ */
 void GcodeSuite::G35() {
+
   DEBUG_SECTION(log_G35, "G35", DEBUGGING(LEVELING));
 
   if (DEBUGGING(LEVELING)) log_machine_info();
@@ -78,9 +83,7 @@ void GcodeSuite::G35() {
     set_bed_leveling_enabled(false);
   #endif
 
-  #if ENABLED(CNC_WORKSPACE_PLANES)
-    workspace_plane = PLANE_XY;
-  #endif
+  TERN_(CNC_WORKSPACE_PLANES, workspace_plane = PLANE_XY);
 
   // Always home with tool 0 active
   #if HAS_MULTI_HOTEND
@@ -97,12 +100,14 @@ void GcodeSuite::G35() {
   bool err_break = false;
 
   // Probe all positions
-  LOOP_L_N(i, G35_PROBE_COUNT) {
+  for (uint8_t i = 0; i < G35_PROBE_COUNT; ++i) {
 
     // In BLTOUCH HS mode, the probe travels in a deployed state.
     // Users of G35 might have a badly misaligned bed, so raise Z by the
     // length of the deployed pin (BLTOUCH stroke < 7mm)
-    do_blocking_move_to_z(SUM_TERN(BLTOUCH_HS_MODE, Z_CLEARANCE_BETWEEN_PROBES, 7));
+
+    // Unsure if this is even required. The probe seems to lift correctly after probe done.
+    do_blocking_move_to_z(SUM_TERN(BLTOUCH, Z_CLEARANCE_BETWEEN_PROBES, bltouch.z_extra_clearance()));
     const float z_probed_height = probe.probe_at_point(tramming_points[i], PROBE_PT_RAISE, 0, true);
 
     if (isnan(z_probed_height)) {
@@ -128,7 +133,7 @@ void GcodeSuite::G35() {
     const float threads_factor[] = { 0.5, 0.7, 0.8 };
 
     // Calculate adjusts
-    LOOP_S_L_N(i, 1, G35_PROBE_COUNT) {
+    for (uint8_t i = 1; i < G35_PROBE_COUNT; ++i) {
       const float diff = z_measured[0] - z_measured[i],
                   adjust = ABS(diff) < 0.001f ? 0 : diff / threads_factor[(screw_thread - 30) / 10];
 
@@ -149,10 +154,10 @@ void GcodeSuite::G35() {
 
   // Restore the active tool after homing
   #if HAS_MULTI_HOTEND
-    tool_change(old_tool_index, DISABLED(PARKING_EXTRUDER)); // Fetch previous toolhead if not PARKING_EXTRUDER
+    if (old_tool_index != 0) tool_change(old_tool_index, DISABLED(PARKING_EXTRUDER)); // Fetch previous toolhead if not PARKING_EXTRUDER
   #endif
 
-  #if BOTH(HAS_LEVELING, RESTORE_LEVELING_AFTER_G35)
+  #if ALL(HAS_LEVELING, RESTORE_LEVELING_AFTER_G35)
     set_bed_leveling_enabled(leveling_was_active);
   #endif
 

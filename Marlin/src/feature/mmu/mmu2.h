@@ -21,6 +21,10 @@
  */
 #pragma once
 
+/**
+ * mmu2.h - Support for Průša MMU2 and MMU2S
+ */
+
 #include "../../inc/MarlinConfig.h"
 
 #if HAS_FILAMENT_SENSOR
@@ -43,11 +47,11 @@ public:
 
   static void init();
   static void reset();
-  static inline bool enabled() { return _enabled; }
+  static bool enabled() { return _enabled; }
   static void mmu_loop();
   static void tool_change(const uint8_t index);
   static void tool_change(const char *special);
-  static uint8_t get_current_tool();
+  static int8_t get_current_tool();
   static void set_filament_type(const uint8_t index, const uint8_t type);
 
   static bool unload();
@@ -57,10 +61,10 @@ public:
   static bool eject_filament(const uint8_t index, const bool recover);
 
 private:
-  static inline bool rx_str(FSTR_P fstr);
-  static inline void tx_str(FSTR_P fstr);
-  static inline void tx_printf(FSTR_P ffmt, const int argument);
-  static inline void tx_printf(FSTR_P ffmt, const int argument1, const int argument2);
+  static bool rx_str(FSTR_P fstr);
+  static void tx_str(FSTR_P fstr);
+  static void tx_printf(FSTR_P ffmt, const int argument);
+  static void tx_printf(FSTR_P ffmt, const int argument1, const int argument2);
   static void clear_rx_buffer();
 
   static bool rx_ok();
@@ -86,6 +90,7 @@ private:
   #endif
 
   #if ENABLED(MMU_EXTRUDER_SENSOR)
+    #define MMU_LOAD_FEEDRATE 19.02f // (mm/s)
     static void mmu_continue_loading();
   #endif
 
@@ -99,7 +104,7 @@ private:
   static millis_t prev_request, prev_P0_request;
   static char rx_buffer[MMU_RX_SIZE], tx_buffer[MMU_TX_SIZE];
 
-  static inline void set_runout_valid(const bool valid) {
+  static void set_runout_valid(const bool valid) {
     finda_runout_valid = valid;
     #if HAS_FILAMENT_SENSOR
       if (valid) runout.reset();

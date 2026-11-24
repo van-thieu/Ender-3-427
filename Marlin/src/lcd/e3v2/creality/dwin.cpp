@@ -33,7 +33,7 @@
 //#define USE_STRING_HEADINGS
 //#define USE_STRING_TITLES
 
-#if ENABLED(LCD_BED_LEVELING) && DISABLED(PROBE_MANUALLY) && ANY(AUTO_BED_LEVELING_BILINEAR, AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_3POINT)
+#if DISABLED(PROBE_MANUALLY) && ANY(AUTO_BED_LEVELING_BILINEAR, AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_3POINT)
   #define HAS_ONESTEP_LEVELING 1
 #endif
 
@@ -45,7 +45,7 @@
   #define JUST_BABYSTEP 1
 #endif
 
-#include "../../fontutils.h"
+#include "../../utf8.h"
 #include "../../marlinui.h"
 
 #include "../../../sd/cardreader.h"
@@ -76,7 +76,7 @@
   #include "../../../module/probe.h"
 #endif
 
-#if EITHER(BABYSTEP_ZPROBE_OFFSET, JUST_BABYSTEP)
+#if ANY(BABYSTEP_ZPROBE_OFFSET, JUST_BABYSTEP)
   #include "../../../feature/babystep.h"
 #endif
 
@@ -90,9 +90,6 @@
 
 #ifndef MACHINE_SIZE
   #define MACHINE_SIZE STRINGIFY(X_BED_SIZE) "x" STRINGIFY(Y_BED_SIZE) "x" STRINGIFY(Z_MAX_POS)
-#endif
-#ifndef CORP_WEBSITE
-  #define CORP_WEBSITE WEBSITE_URL
 #endif
 
 #define PAUSE_HEAT
@@ -116,7 +113,6 @@
 #define UNITFDIGITS 1
 #define MINUNITMULT pow(10, UNITFDIGITS)
 
-#define ENCODER_WAIT_MS                  20
 #define DWIN_VAR_UPDATE_INTERVAL         1024
 #define DWIN_SCROLL_UPDATE_INTERVAL      SEC_TO_MS(2)
 #define DWIN_REMAIN_TIME_UPDATE_INTERVAL SEC_TO_MS(20)
@@ -217,7 +213,7 @@ void HMI_SetLanguageCache() {
 }
 
 void HMI_SetLanguage() {
-  #if BOTH(EEPROM_SETTINGS, IIC_BL24CXX_EEPROM)
+  #if ALL(EEPROM_SETTINGS, IIC_BL24CXX_EEPROM)
     BL24CXX::read(DWIN_LANGUAGE_EEPROM_ADDRESS, (uint8_t*)&HMI_flag.language, sizeof(HMI_flag.language));
   #endif
   HMI_SetLanguageCache();
@@ -226,7 +222,7 @@ void HMI_SetLanguage() {
 void HMI_ToggleLanguage() {
   HMI_flag.language = HMI_IsChinese() ? DWIN_ENGLISH : DWIN_CHINESE;
   HMI_SetLanguageCache();
-  #if BOTH(EEPROM_SETTINGS, IIC_BL24CXX_EEPROM)
+  #if ALL(EEPROM_SETTINGS, IIC_BL24CXX_EEPROM)
     BL24CXX::write(DWIN_LANGUAGE_EEPROM_ADDRESS, (uint8_t*)&HMI_flag.language, sizeof(HMI_flag.language));
   #endif
 }
@@ -414,7 +410,7 @@ void Scroll_Menu(const uint8_t dir) {
 }
 
 inline uint16_t nr_sd_menu_items() {
-  return card.get_num_Files() + !card.flag.workDirIsRoot;
+  return card.get_num_items() + !card.flag.workDirIsRoot;
 }
 
 void Erase_Menu_Text(const uint8_t line) {
@@ -474,15 +470,6 @@ void Draw_Back_First(const bool is_sel=true) {
   if (is_sel) Draw_Menu_Cursor(0);
 }
 
-template <typename T>
-inline bool Apply_Encoder(const EncoderState &encoder_diffState, T &valref) {
-  if (encoder_diffState == ENCODER_DIFF_CW)
-    valref += EncoderRate.encoderMoveValue;
-  else if (encoder_diffState == ENCODER_DIFF_CCW)
-    valref -= EncoderRate.encoderMoveValue;
-  return encoder_diffState == ENCODER_DIFF_ENTER;
-}
-
 //
 // Draw Menus
 //
@@ -500,7 +487,7 @@ inline bool Apply_Encoder(const EncoderState &encoder_diffState, T &valref) {
 #define PREPARE_CASE_ZOFF (PREPARE_CASE_HOME + ENABLED(HAS_ZOFFSET_ITEM))
 #define PREPARE_CASE_PLA  (PREPARE_CASE_ZOFF + ENABLED(HAS_PREHEAT))
 #define PREPARE_CASE_ABS  (PREPARE_CASE_PLA + (TERN0(HAS_PREHEAT, PREHEAT_COUNT > 1)))
-#define PREPARE_CASE_COOL (PREPARE_CASE_ABS + EITHER(HAS_HOTEND, HAS_HEATED_BED))
+#define PREPARE_CASE_COOL (PREPARE_CASE_ABS + ANY(HAS_HOTEND, HAS_HEATED_BED))
 #define PREPARE_CASE_LANG (PREPARE_CASE_COOL + 1)
 #define PREPARE_CASE_TOTAL PREPARE_CASE_LANG
 
@@ -1285,7 +1272,7 @@ void Goto_MainMenu() {
     DWIN_Frame_TitleCopy(2, 2, 26, 13);   // "Home" etc
   else {
     #ifdef USE_STRING_HEADINGS
-      Draw_Title(GET_TEXT_F(MSG_MAIN));
+      Draw_Title(GET_TEXT_F(MSG_MAIN_MENU));
     #else
       DWIN_Frame_TitleCopy(0, 2, 40, 11); // "Home"
     #endif
@@ -1297,15 +1284,6 @@ void Goto_MainMenu() {
   ICON_Prepare();
   ICON_Control();
   TERN(HAS_ONESTEP_LEVELING, ICON_Leveling, ICON_StartInfo)();
-}
-
-inline EncoderState get_encoder_state() {
-  static millis_t Encoder_ms = 0;
-  const millis_t ms = millis();
-  if (PENDING(ms, Encoder_ms)) return ENCODER_DIFF_NO;
-  const EncoderState state = Encoder_ReceiveAnalyze();
-  if (state != ENCODER_DIFF_NO) Encoder_ms = ms + ENCODER_WAIT_MS;
-  return state;
 }
 
 void HMI_Plan_Move(const feedRate_t fr_mm_s) {
@@ -1387,8 +1365,6 @@ void HMI_Move_Z() {
 
 #if HAS_ZOFFSET_ITEM
 
-  bool printer_busy() { return planner.movesplanned() || printingIsActive(); }
-
   void HMI_Zoffset() {
     EncoderState encoder_diffState = Encoder_ReceiveAnalyze();
     if (encoder_diffState == ENCODER_DIFF_NO) return;
@@ -1411,7 +1387,7 @@ void HMI_Move_Z() {
     LIMIT(HMI_ValueStruct.offset_value, (Z_PROBE_OFFSET_RANGE_MIN) * 100, (Z_PROBE_OFFSET_RANGE_MAX) * 100);
     last_zoffset = dwin_zoffset;
     dwin_zoffset = HMI_ValueStruct.offset_value / 100.0f;
-    #if EITHER(BABYSTEP_ZPROBE_OFFSET, JUST_BABYSTEP)
+    #if ANY(BABYSTEP_ZPROBE_OFFSET, JUST_BABYSTEP)
       if (BABYSTEP_ALLOWED()) babystep.add_mm(Z_AXIS, dwin_zoffset - last_zoffset);
     #endif
     Draw_Edit_Signed_Float2(zoff_line, HMI_ValueStruct.offset_value, true);
@@ -1754,7 +1730,7 @@ void update_variable() {
     if (_new_hotend_target)
       Draw_Stat_Int(25 + 4 * STAT_CHR_W + 6, 384, _hotendtarget);
 
-    static int16_t _flow = planner.flow_percentage[0];
+    static int16_t _flow = 0;
     if (_flow != planner.flow_percentage[0]) {
       _flow = planner.flow_percentage[0];
       Draw_Stat_Int(116 + 2 * STAT_CHR_W, 417, _flow);
@@ -1768,7 +1744,7 @@ void update_variable() {
       Draw_Stat_Int(25 + 4 * STAT_CHR_W + 6, 417, _bedtarget);
   #endif
 
-  static int16_t _feedrate = 100;
+  static int16_t _feedrate = 0;
   if (_feedrate != feedrate_percentage) {
     _feedrate = feedrate_percentage;
     Draw_Stat_Int(116 + 2 * STAT_CHR_W, 384, _feedrate);
@@ -1834,6 +1810,9 @@ void make_name_without_ext(char *dst, char *src, size_t maxlen=MENU_CHAR_LIMIT) 
 
 void HMI_SDCardInit() { card.cdroot(); }
 
+// Initialize or re-initialize the LCD
+void MarlinUI::init_lcd() { DWIN_Startup(); }
+
 void MarlinUI::refresh() { /* Nothing to see here */ }
 
 #if HAS_LCD_BRIGHTNESS
@@ -1850,9 +1829,9 @@ void MarlinUI::refresh() { /* Nothing to see here */ }
   void Init_Shift_Name() {
     const bool is_subdir = !card.flag.workDirIsRoot;
     const int8_t filenum = select_file.now - 1 - is_subdir; // Skip "Back" and ".."
-    const uint16_t fileCnt = card.get_num_Files();
+    const int16_t fileCnt = card.get_num_items();
     if (WITHIN(filenum, 0, fileCnt - 1)) {
-      card.getfilename_sorted(SD_ORDER(filenum, fileCnt));
+      card.selectFileByIndexSorted(filenum);
       char * const name = card.longest_filename();
       make_name_without_ext(shift_name, name, 100);
     }
@@ -1877,7 +1856,7 @@ void Draw_SDItem(const uint16_t item, int16_t row=-1) {
     return;
   }
 
-  card.getfilename_sorted(SD_ORDER(item - is_subdir, card.get_num_Files()));
+  card.selectFileByIndexSorted(item - is_subdir);
   char * const name = card.longest_filename();
 
   #if ENABLED(SCROLL_LONG_FILENAMES)
@@ -1928,7 +1907,7 @@ void Redraw_SD_List() {
 
   if (card.isMounted()) {
     // As many files as will fit
-    LOOP_L_N(i, _MIN(nr_sd_menu_items(), MROWS))
+    for (uint8_t i = 0; i < _MIN(nr_sd_menu_items(), MROWS); ++i)
       Draw_SDItem(i, i + 1);
 
     TERN_(SCROLL_LONG_FILENAMES, Init_SDItem_Shift());
@@ -2075,7 +2054,7 @@ void Draw_Info_Menu() {
   DWIN_Draw_String(false, font8x16, Color_White, Color_Bg_Black, (DWIN_WIDTH - strlen(CORP_WEBSITE) * MENU_CHR_W) / 2, 268, F(CORP_WEBSITE));
 
   Draw_Back_First();
-  LOOP_L_N(i, 3) {
+  for (uint8_t i = 0; i < 3; ++i) {
     DWIN_ICON_Show(ICON, ICON_PrintSize + i, 26, 99 + i * 73);
     DWIN_Draw_Line(Line_Color, 16, MBASE(2) + i * 73, 256, 156 + i * 73);
   }
@@ -2243,7 +2222,7 @@ void HMI_SelectFile() {
     }
     else {
       const uint16_t filenum = select_file.now - 1 - hasUpDir;
-      card.getfilename_sorted(SD_ORDER(filenum, card.get_num_Files()));
+      card.selectFileByIndexSorted(filenum);
 
       // Enter that folder!
       if (card.flag.filenameIsDir) {
@@ -2263,12 +2242,14 @@ void HMI_SelectFile() {
       card.openAndPrintFile(card.filename);
 
       #if HAS_FAN
-        // All fans on for Ender 3 v2 ?
+        // All fans on for Ender-3 v2 ?
         // The slicer should manage this for us.
         //for (uint8_t i = 0; i < FAN_COUNT; i++)
         //  thermalManager.fan_speed[i] = 255;
       #endif
 
+      _card_percent = 0;
+      _remain_time = 0;
       Goto_PrintProcess();
     }
   }
@@ -2326,10 +2307,10 @@ void HMI_Printing() {
           char cmd[40];
           cmd[0] = '\0';
 
-          #if BOTH(HAS_HEATED_BED, PAUSE_HEAT)
+          #if ALL(HAS_HEATED_BED, PAUSE_HEAT)
             if (resume_bed_temp) sprintf_P(cmd, PSTR("M190 S%i\n"), resume_bed_temp);
           #endif
-          #if BOTH(HAS_HOTEND, PAUSE_HEAT)
+          #if ALL(HAS_HOTEND, PAUSE_HEAT)
             if (resume_hotend_temp) sprintf_P(&cmd[strlen(cmd)], PSTR("M109 S%i\n"), resume_hotend_temp);
           #endif
 
@@ -2425,7 +2406,7 @@ void Draw_Move_Menu() {
   if (select_axis.now != CASE_BACK) Draw_Menu_Cursor(select_axis.now);
 
   // Draw separators and icons
-  LOOP_L_N(i, 3 + ENABLED(HAS_HOTEND)) Draw_Menu_Line(i + 1, ICON_MoveX + i);
+  for (uint8_t i = 0; i < 3 + ENABLED(HAS_HOTEND); ++i) Draw_Menu_Line(i + 1, ICON_MoveX + i);
 }
 
 void Item_Adv_HomeOffsets(const uint8_t row) {
@@ -2643,15 +2624,13 @@ void Draw_HomeOff_Menu() {
 #include "../../../libs/buzzer.h"
 
 void HMI_AudioFeedback(const bool success=true) {
-  #if HAS_BUZZER
-    if (success) {
-      buzzer.tone(100, 659);
-      buzzer.tone(10, 0);
-      buzzer.tone(100, 698);
-    }
-    else
-      buzzer.tone(40, 440);
-  #endif
+  if (success) {
+    BUZZ(100, 659);
+    BUZZ(10, 0);
+    BUZZ(100, 698);
+  }
+  else
+    BUZZ(40, 440);
 }
 
 // Prepare
@@ -2738,7 +2717,7 @@ void HMI_Prepare() {
 
       #if HAS_ZOFFSET_ITEM
         case PREPARE_CASE_ZOFF:
-          #if EITHER(HAS_BED_PROBE, BABYSTEPPING)
+          #if ANY(HAS_BED_PROBE, BABYSTEPPING)
             checkkey = Homeoffset;
             HMI_ValueStruct.show_mode = -4;
             HMI_ValueStruct.offset_value = BABY_Z_VAR * 100;
@@ -2746,7 +2725,7 @@ void HMI_Prepare() {
             EncoderRate.enabled = true;
           #else
             // Apply workspace offset, making the current position 0,0,0
-            queue.inject(F("G92 X0 Y0 Z0"));
+            queue.inject(F("G92X0Y0Z0"));
             HMI_AudioFeedback();
           #endif
           break;
@@ -2760,7 +2739,10 @@ void HMI_Prepare() {
       #endif
 
       #if HAS_HOTEND || HAS_HEATED_BED
-        case PREPARE_CASE_COOL: thermalManager.cooldown(); break;
+        case PREPARE_CASE_COOL:
+          thermalManager.cooldown();
+          ui.reset_status();
+          break;
       #endif
 
       case PREPARE_CASE_LANG:
@@ -3298,7 +3280,7 @@ void Draw_Max_Speed_Menu() {
   }
 
   Draw_Back_First();
-  LOOP_L_N(i, 3 + ENABLED(HAS_HOTEND)) Draw_Menu_Line(i + 1, ICON_MaxSpeedX + i);
+  for (uint8_t i = 0; i < 3 + ENABLED(HAS_HOTEND); ++i) Draw_Menu_Line(i + 1, ICON_MaxSpeedX + i);
   Draw_Edit_Integer4(1, planner.settings.max_feedrate_mm_s[X_AXIS]);
   Draw_Edit_Integer4(2, planner.settings.max_feedrate_mm_s[Y_AXIS]);
   Draw_Edit_Integer4(3, planner.settings.max_feedrate_mm_s[Z_AXIS]);
@@ -3352,7 +3334,7 @@ void Draw_Max_Accel_Menu() {
   }
 
   Draw_Back_First();
-  LOOP_L_N(i, 3 + ENABLED(HAS_HOTEND)) Draw_Menu_Line(i + 1, ICON_MaxAccX + i);
+  for (uint8_t i = 0; i < 3 + ENABLED(HAS_HOTEND); ++i) Draw_Menu_Line(i + 1, ICON_MaxAccX + i);
   Draw_Edit_Integer4(1, planner.settings.max_acceleration_mm_per_s2[X_AXIS]);
   Draw_Edit_Integer4(2, planner.settings.max_acceleration_mm_per_s2[Y_AXIS]);
   Draw_Edit_Integer4(3, planner.settings.max_acceleration_mm_per_s2[Z_AXIS]);
@@ -3411,12 +3393,12 @@ void Draw_Max_Accel_Menu() {
     }
 
     Draw_Back_First();
-    LOOP_L_N(i, 3 + ENABLED(HAS_HOTEND)) Draw_Menu_Line(i + 1, ICON_MaxSpeedJerkX + i);
-    Draw_Edit_Float3(1, planner.max_jerk[X_AXIS] * MINUNITMULT);
-    Draw_Edit_Float3(2, planner.max_jerk[Y_AXIS] * MINUNITMULT);
-    Draw_Edit_Float3(3, planner.max_jerk[Z_AXIS] * MINUNITMULT);
+    for (uint8_t i = 0; i < 3 + ENABLED(HAS_HOTEND); ++i) Draw_Menu_Line(i + 1, ICON_MaxSpeedJerkX + i);
+    Draw_Edit_Float3(1, planner.max_jerk.x * MINUNITMULT);
+    Draw_Edit_Float3(2, planner.max_jerk.y * MINUNITMULT);
+    Draw_Edit_Float3(3, planner.max_jerk.z * MINUNITMULT);
     #if HAS_HOTEND
-      Draw_Edit_Float3(4, planner.max_jerk[E_AXIS] * MINUNITMULT);
+      Draw_Edit_Float3(4, planner.max_jerk.e * MINUNITMULT);
     #endif
   }
 #endif
@@ -3462,7 +3444,7 @@ void Draw_Steps_Menu() {
   }
 
   Draw_Back_First();
-  LOOP_L_N(i, 3 + ENABLED(HAS_HOTEND)) Draw_Menu_Line(i + 1, ICON_StepX + i);
+  for (uint8_t i = 0; i < 3 + ENABLED(HAS_HOTEND); ++i) Draw_Menu_Line(i + 1, ICON_StepX + i);
   Draw_Edit_Float3(1, planner.settings.axis_steps_per_mm[X_AXIS] * MINUNITMULT);
   Draw_Edit_Float3(2, planner.settings.axis_steps_per_mm[Y_AXIS] * MINUNITMULT);
   Draw_Edit_Float3(3, planner.settings.axis_steps_per_mm[Z_AXIS] * MINUNITMULT);
@@ -3571,9 +3553,9 @@ void HMI_AdvSet() {
         case ADVSET_CASE_HOMEOFF:
           checkkey = HomeOff;
           select_item.reset();
-          HMI_ValueStruct.Home_OffX_scaled = home_offset[X_AXIS] * 10;
-          HMI_ValueStruct.Home_OffY_scaled = home_offset[Y_AXIS] * 10;
-          HMI_ValueStruct.Home_OffZ_scaled = home_offset[Z_AXIS] * 10;
+          HMI_ValueStruct.Home_OffX_scaled = home_offset.x * 10;
+          HMI_ValueStruct.Home_OffY_scaled = home_offset.y * 10;
+          HMI_ValueStruct.Home_OffZ_scaled = home_offset.z * 10;
           Draw_HomeOff_Menu();
           break;
       #endif
@@ -3814,14 +3796,14 @@ void HMI_Tune() {
       #endif
       #if HAS_ZOFFSET_ITEM
         case TUNE_CASE_ZOFF: // Z-offset
-          #if EITHER(HAS_BED_PROBE, BABYSTEPPING)
+          #if ANY(HAS_BED_PROBE, BABYSTEPPING)
             checkkey = Homeoffset;
             HMI_ValueStruct.offset_value = BABY_Z_VAR * 100;
             Draw_Edit_Signed_Float2(TUNE_CASE_ZOFF + MROWS - index_tune, HMI_ValueStruct.offset_value, true);
             EncoderRate.enabled = true;
           #else
             // Apply workspace offset, making the current position 0,0,0
-            queue.inject(F("G92 X0 Y0 Z0"));
+            queue.inject(F("G92X0Y0Z0"));
             HMI_AudioFeedback();
           #endif
         break;
@@ -4081,6 +4063,13 @@ void HMI_Init() {
   HMI_SetLanguage();
 }
 
+void DWIN_InitScreen() {
+  Encoder_Configuration();
+  HMI_Init();
+  HMI_SetLanguageCache();
+  HMI_StartFrame(true);
+}
+
 void DWIN_Update() {
   EachMomentUpdate();   // Status update
   HMI_SDCardUpdate();   // SD card update
@@ -4173,10 +4162,7 @@ void EachMomentUpdate() {
   }
   #if ENABLED(POWER_LOSS_RECOVERY)
     else if (DWIN_lcd_sd_status && recovery.dwin_flag) { // resume print before power off
-      static bool recovery_flag = false;
-
       recovery.dwin_flag = false;
-      recovery_flag = true;
 
       auto update_selection = [&](const bool sel) {
         HMI_flag.select_flag = sel;
@@ -4196,6 +4182,7 @@ void EachMomentUpdate() {
       DWIN_Draw_String(true, font8x16, Popup_Text_Color, Color_Bg_Window, npos, 252, name);
       DWIN_UpdateLCD();
 
+      bool recovery_flag = true;
       while (recovery_flag) {
         EncoderState encoder_diffState = Encoder_ReceiveAnalyze();
         if (encoder_diffState != ENCODER_DIFF_NO) {
@@ -4269,7 +4256,7 @@ void DWIN_HandleScreen() {
       case Extruder:      HMI_Move_E(); break;
       case ETemp:         HMI_ETemp(); break;
     #endif
-    #if EITHER(HAS_BED_PROBE, BABYSTEPPING)
+    #if ANY(HAS_BED_PROBE, BABYSTEPPING)
       case Homeoffset:    HMI_Zoffset(); break;
     #endif
     #if HAS_HEATED_BED
@@ -4289,7 +4276,7 @@ void DWIN_HandleScreen() {
   }
 }
 
-void DWIN_CompletedHoming() {
+void DWIN_HomingDone() {
   HMI_flag.home_flag = false;
   dwin_zoffset = TERN0(HAS_BED_PROBE, probe.offset.z);
   if (checkkey == Last_Prepare) {
@@ -4305,7 +4292,7 @@ void DWIN_CompletedHoming() {
   }
 }
 
-void DWIN_CompletedLeveling() {
+void DWIN_LevelingDone() {
   if (checkkey == Leveling) Goto_MainMenu();
 }
 
@@ -4317,9 +4304,13 @@ void DWIN_StatusChanged(const char * const cstr/*=nullptr*/) {
 }
 
 void DWIN_StatusChanged(FSTR_P const fstr) {
-  char str[strlen_P(FTOP(fstr)) + 1];
-  strcpy_P(str, FTOP(fstr));
-  DWIN_StatusChanged(str);
+  #ifdef __AVR__
+    char str[strlen_P(FTOP(fstr)) + 1];
+    strcpy_P(str, FTOP(fstr));
+    DWIN_StatusChanged(str);
+  #else
+    DWIN_StatusChanged(FTOP(fstr));
+  #endif
 }
 
 #endif // DWIN_CREALITY_LCD

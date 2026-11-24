@@ -1,9 +1,9 @@
 /**
  * Marlin 3D Printer Firmware
- *
  * Copyright (c) 2020 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
- * Copyright (c) 2016 Bob Cousins bobcousins42@googlemail.com
- * Copyright (c) 2015-2016 Nico Tonnhofer wurstnase.reprap@gmail.com
+ *
+ * Based on Sprinter and grbl.
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@
 #include "../shared/HAL_SPI.h"
 
 #include "fastio.h"
-#include "watchdog.h"
 
 #include <stdint.h>
 #include <util/atomic.h>
@@ -40,10 +39,6 @@
 #if HAS_ETHERNET
   #include "../../feature/ethernet.h"
 #endif
-
-#define CPU_ST7920_DELAY_1 600
-#define CPU_ST7920_DELAY_2 750
-#define CPU_ST7920_DELAY_3 750
 
 // ------------------------
 // Defines
@@ -55,7 +50,23 @@
   #define IS_TEENSY41 1
 #endif
 
+#define CPU_ST7920_DELAY_1 600
+#define CPU_ST7920_DELAY_2 750
+#define CPU_ST7920_DELAY_3 750
+
+#undef sq
+#define sq(x) ((x)*(x))
+
+// Don't place string constants in PROGMEM
+#undef PSTR
+#define PSTR(str) ({static const char *data = (str); &data[0];})
+
+// ------------------------
+// Serial ports
+// ------------------------
+
 #include "../../core/serial_hook.h"
+
 #define Serial0 Serial
 #define _DECLARE_SERIAL(X) \
   typedef ForwardSerial1Class<decltype(Serial##X)> DefaultSerial##X; \
@@ -69,7 +80,7 @@ extern USBSerialType USBSerial;
 #define MSERIAL(X) _MSERIAL(X)
 
 #if SERIAL_PORT == -1
-  #define MYSERIAL1 SerialUSB
+  #define MYSERIAL1 USBSerial
 #elif WITHIN(SERIAL_PORT, 0, 8)
   DECLARE_SERIAL(SERIAL_PORT);
   #define MYSERIAL1 MSERIAL(SERIAL_PORT)
@@ -79,51 +90,69 @@ extern USBSerialType USBSerial;
 
 #ifdef SERIAL_PORT_2
   #if SERIAL_PORT_2 == -1
-    #define MYSERIAL2 usbSerial
+    #define MYSERIAL2 USBSerial
   #elif SERIAL_PORT_2 == -2
     #define MYSERIAL2 ethernet.telnetClient
   #elif WITHIN(SERIAL_PORT_2, 0, 8)
+    DECLARE_SERIAL(SERIAL_PORT_2);
     #define MYSERIAL2 MSERIAL(SERIAL_PORT_2)
   #else
     #error "SERIAL_PORT_2 must be from 0 to 8, or -1 for Native USB, or -2 for Ethernet."
   #endif
 #endif
 
-#define HAL_SERVO_LIB libServo
+#ifdef SERIAL_PORT_3
+  #if SERIAL_PORT_3 == -1
+    #define MYSERIAL3 USBSerial
+  #elif WITHIN(SERIAL_PORT_3, 0, 8)
+    DECLARE_SERIAL(SERIAL_PORT_3);
+    #define MYSERIAL3 MSERIAL(SERIAL_PORT_3)
+  #else
+    #error "SERIAL_PORT_3 must be from 0 to 8, or -1 for Native USB."
+  #endif
+#endif
+
+// ------------------------
+// Types
+// ------------------------
+
+class libServo;
+typedef libServo hal_servo_t;
 
 typedef int8_t pin_t;
 
+// ------------------------
+// Interrupts
+// ------------------------
+
+#define CRITICAL_SECTION_START()  const bool irqon = !__get_primask(); __disable_irq()
+#define CRITICAL_SECTION_END()    if (irqon) __enable_irq()
+
+// ------------------------
+// ADC
+// ------------------------
+
 #ifndef analogInputToDigitalPin
-  #define analogInputToDigitalPin(p) ((p < 12U) ? (p) + 54U : -1)
+  #define analogInputToDigitalPin(p) pin_t((p < 12U) ? (p) + 54U : -1)
 #endif
 
-#define CRITICAL_SECTION_START()  uint32_t primask = __get_primask(); __disable_irq()
-#define CRITICAL_SECTION_END()    if (!primask) __enable_irq()
-#define ISRS_ENABLED() (!__get_primask())
-#define ENABLE_ISRS()  __enable_irq()
-#define DISABLE_ISRS() __disable_irq()
+#define HAL_ADC_VREF_MV   3300
+#define HAL_ADC_RESOLUTION  10
+#define HAL_ADC_FILTERED      // turn off ADC oversampling
 
-#undef sq
-#define sq(x) ((x)*(x))
+//
+// Pin Mapping for M42, M43, M226
+//
+#define GET_PIN_MAP_PIN(index) index
+#define GET_PIN_MAP_INDEX(pin) pin
+#define PARSED_PIN_INDEX(code, dval) parser.intval(code, dval)
 
-// Don't place string constants in PROGMEM
-#undef PSTR
-#define PSTR(str) ({static const char *data = (str); &data[0];})
+// FastIO
+bool is_output(pin_t pin);
 
-// Enable hooks into idle and setup for HAL
-#define HAL_IDLETASK 1
-FORCE_INLINE void HAL_idletask() {}
-FORCE_INLINE void HAL_init() {}
-
-// Clear reset reason
-void HAL_clear_reset_source();
-
-// Reset reason
-uint8_t HAL_get_reset_source();
-
-void HAL_reboot();
-
-FORCE_INLINE void _delay_ms(const int delay_ms) { delay(delay_ms); }
+// ------------------------
+// Free Memory Accessor
+// ------------------------
 
 #pragma GCC diagnostic push
 #if GCC_VERSION <= 50000
@@ -134,30 +163,69 @@ extern "C" uint32_t freeMemory();
 
 #pragma GCC diagnostic pop
 
-// ADC
+// ------------------------
+// MarlinHAL Class
+// ------------------------
 
-void HAL_adc_init();
+class MarlinHAL {
+public:
 
-#define HAL_ADC_VREF         3.3
-#define HAL_ADC_RESOLUTION  10
-#define HAL_ADC_FILTERED      // turn off ADC oversampling
-#define HAL_START_ADC(pin)  HAL_adc_start_conversion(pin)
-#define HAL_READ_ADC()      HAL_adc_get_result()
-#define HAL_ADC_READY()     true
+  // Earliest possible init, before setup()
+  MarlinHAL() {}
 
-#define HAL_ANALOG_SELECT(pin)
+  // Watchdog
+  static void watchdog_init()    IF_DISABLED(USE_WATCHDOG, {});
+  static void watchdog_refresh() IF_DISABLED(USE_WATCHDOG, {});
 
-void HAL_adc_start_conversion(const uint8_t adc_pin);
-uint16_t HAL_adc_get_result();
+  static void init() {}        // Called early in setup()
+  static void init_board() {}  // Called less early in setup()
+  static void reboot();        // Restart the firmware from 0x0
 
-// PWM
+  // Interrupts
+  static bool isr_state() { return !__get_primask(); }
+  static void isr_on()  { __enable_irq(); }
+  static void isr_off() { __disable_irq(); }
 
-inline void set_pwm_duty(const pin_t pin, const uint16_t v, const uint16_t=255, const bool=false) { analogWrite(pin, v); }
+  static void delay_ms(const int ms) { delay(ms); }
 
-// Pin Map
+  // Tasks, called from idle()
+  static void idletask() {}
 
-#define GET_PIN_MAP_PIN(index) index
-#define GET_PIN_MAP_INDEX(pin) pin
-#define PARSED_PIN_INDEX(code, dval) parser.intval(code, dval)
+  // Reset
+  static uint8_t get_reset_source();
+  static void clear_reset_source();
 
-bool is_output(pin_t pin);
+  // Free SRAM
+  static int freeMemory() { return ::freeMemory(); }
+
+  //
+  // ADC Methods
+  //
+
+  static int8_t adc_select;
+
+  // Called by Temperature::init once at startup
+  static void adc_init();
+
+  // Called by Temperature::init for each sensor at startup
+  static void adc_enable(const pin_t pin) {}
+
+  // Begin ADC sampling on the given pin. Called from Temperature::isr!
+  static void adc_start(const pin_t pin);
+
+  // Is the ADC ready for reading?
+  static bool adc_ready() { return true; }
+
+  // The current value of the ADC register
+  static uint16_t adc_value();
+
+  /**
+   * Set the PWM duty cycle for the pin to the given value.
+   * No option to invert the duty cycle [default = false]
+   * No option to change the scale of the provided value to enable finer PWM duty control [default = 255]
+   */
+  static void set_pwm_duty(const pin_t pin, const uint16_t v, const uint16_t=255, const bool=false) {
+    analogWrite(pin, v);
+  }
+
+};

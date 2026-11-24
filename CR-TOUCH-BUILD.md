@@ -28,9 +28,13 @@ Output: `.pio/build/STM32F103RE_creality/firmware.bin`
 - `#define Z_SAFE_HOMING`
 - `PROBING_MARGIN_LEFT/RIGHT 35`, `FRONT/BACK 15` so the offset probe stays on the bed
 - `#define BABYSTEP_ZPROBE_OFFSET` — Z probe offset can be babystepped live
+- `Z_MIN_POS -5` — fixes the "nozzle can't reach the bed" issue: with a negative
+  probe Z offset (`M851 Z-1.38`) the nozzle must travel below Z=0 to touch the bed,
+  and the stock `Z_MIN_POS 0` software limit prevents that
 - `Z_MAX_POS 350` — intentional: the printer has Creality's physical **Z-axis
   extension / "Z350" profiles kit** (the official firmware for this setup is named
   `Ender-3 HD4.2.7-Z350-...`). Do not reduce this value to the stock 250.
+  (The currently installed firmware still reports Zmax 250 via `M211`.)
 
 ## Flashing
 

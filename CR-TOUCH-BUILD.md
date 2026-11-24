@@ -27,6 +27,9 @@ Output: `.pio/build/STM32F103RE_creality/firmware.bin`
 - `#define Z_SAFE_HOMING`
 - `PROBING_MARGIN_LEFT/RIGHT 45`, `FRONT/BACK 15` so the offset probe stays on the bed
 - `#define BABYSTEP_ZPROBE_OFFSET` — Z probe offset can be babystepped live
+- `Z_MAX_POS 350` — intentional: the printer has Creality's physical **Z-axis
+  extension / "Z350" profiles kit** (the official firmware for this setup is named
+  `Ender-3 HD4.2.7-Z350-...`). Do not reduce this value to the stock 250.
 
 ## Flashing
 

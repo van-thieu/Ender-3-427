@@ -1020,6 +1020,10 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
         case 919: M919(); break;                                  // M919: Set stepper Chopper Times
       #endif
 
+      #if ENABLED(OTA_FIRMWARE_UPDATE)
+        case 936: M936(); break;                                  // M936: OTA update firmware
+      #endif
+
       #if HAS_MICROSTEPS
         case 350: M350(); break;                                  // M350: Set microstepping mode. Warning: Steps per unit remains unchanged. S code sets stepping mode for all drivers.
         case 351: M351(); break;                                  // M351: Toggle MS1 MS2 pins directly, S# determines MS1 or MS2, X# sets the pin high/low.

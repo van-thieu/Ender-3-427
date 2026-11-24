@@ -1184,6 +1184,10 @@ private:
     static void M919();
   #endif
 
+  #if ENABLED(OTA_FIRMWARE_UPDATE)
+    static void M936();
+  #endif
+
   #if HAS_MOTOR_CURRENT_SPI || HAS_MOTOR_CURRENT_PWM || HAS_MOTOR_CURRENT_I2C || HAS_MOTOR_CURRENT_DAC
     static void M907();
     #if HAS_MOTOR_CURRENT_SPI || HAS_MOTOR_CURRENT_PWM

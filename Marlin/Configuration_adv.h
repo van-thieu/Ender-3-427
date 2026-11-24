@@ -1727,6 +1727,10 @@
    */
   //#define CONFIGURATION_EMBEDDING
 
+  // Enable M936 V2 - Creality MCU OTA trigger. The WiFi box sends M936 V2
+  // and then streams firmware to the bootloader over serial.
+  #define OTA_FIRMWARE_UPDATE
+
   // Add an optimized binary file transfer mode, initiated with 'M28 B1'.
   // Enabled so future firmware updates can be pushed to the printer's SD card
   // over the USB serial link from the Creality WiFi box, without handling the card.

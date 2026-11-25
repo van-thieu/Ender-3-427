@@ -106,3 +106,9 @@ transfer.
 ## License
 
 Marlin firmware is GPL-3.0. See [LICENSE](LICENSE).
+
+## More documentation
+
+- [Documentation index](docs/README.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Creality WiFi box notes](docs/BOX-NOTES.md)

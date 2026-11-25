@@ -104,3 +104,9 @@ python3 -m venv .venv
 ## Лицензия
 
 Прошивка Marlin распространяется по лицензии GPL-3.0. См. [LICENSE](LICENSE).
+
+## Дополнительная документация
+
+- [Указатель документации](docs/README.ru.md)
+- [Устранение неполадок](docs/TROUBLESHOOTING.ru.md)
+- [Заметки о WiFi-боксе](docs/BOX-NOTES.ru.md)

@@ -100,3 +100,9 @@ python3 -m venv .venv
 ## 授權
 
 Marlin 韌體採用 GPL-3.0，詳情請見 [LICENSE](LICENSE)。
+
+## 更多文件
+
+- [文件索引](docs/README.zh-TW.md)
+- [疑難排解](docs/TROUBLESHOOTING.zh-TW.md)
+- [Creality WiFi 盒子筆記](docs/BOX-NOTES.zh-TW.md)

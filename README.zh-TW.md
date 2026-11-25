@@ -72,21 +72,30 @@ python3 -m venv .venv
 
 疑難排解請參閱 [CR-TOUCH-BUILD.zh-TW.md](CR-TOUCH-BUILD.zh-TW.md)。
 
-## Creality WiFi 盒子
+## Creality WiFi 盒子與遠端更新
 
-網路上的盒子可用於**監控與 G-code 控制**（連接埠 81 的 HTTP 狀態 API、
-對其 SD 卡的匿名 FTP、telnet shell）。裝置憑證基於安全考量不在此文件中揭露。
+盒子提供監控、G-code 控制，以及**遠端韌體更新**。
 
-**在此硬體上透過盒子更新韌體並不可靠：**
+- 狀態 API：`http://<box>/protocal.csp?fname=Info&opt=main&function=get`
+- FTP：匿名存取盒子的 SD 卡
+- telnet shell：裝置憑證因安全考量不於此揭露
 
-- 盒子內建的 MCU OTA 會傳送 `M936 V2` 並等待 `mcu reset ok`，然後串流韌體。
-  但 4.2.7 的開機載入器不會進入 OTA 模式，串流位元組會被 Marlin 當成無效指令。
-  Creality 原廠 4.2.7 韌體沒有 `M936` 處理器。
-- Marlin 的二進位檔案傳輸（`M28 B1`）已實作重傳原型。雖然大部分封包可通過，
-  但盒子的 `prt_com` 守護程序會把自身的 `M105`／`M27` 輪詢插入序列串流，
-  造成封包損毀；目前尚無可靠的上傳器。
+### 遠端韌體更新
 
-因此**請使用 SD 卡更新韌體**。盒子用於監控與校準則沒有問題。
+盒子上已安裝持久性上傳器，並在每次開機時啟動：
+
+- `/mnt/creality/custom_start.sh`（註冊於 `/mnt/creality/_md5_app`）
+- `/mnt/creality/bft_daemon.sh`，監看 `creality/bft/trigger`
+- `creality/bft/result.txt` 記錄每次上傳結果
+
+準備更新時，在 PC 上執行 `python3 tools/gen_bft.py <firmware.bin>`（需設定
+`BOX_PASS`），它會將預先產生的 BFT 封包（涵蓋 256 種 sync 值）放到盒子的 SD 卡。
+然後在盒子上建立 `creality/bft/trigger`。上傳器會暫時停止盒子的輪詢守護程序、
+進入 `M28 B1` 模式、逐封包傳送、驗證回覆，最後送出 `M21` 與 `M997`，
+讓印表機重新開機並由開機載入器安裝新韌體。
+
+注意：SD 卡必須插在印表機上（韌體會寫入該卡）、每次必须使用新的唯一 8.3 檔名
+（目前工具使用 `FW.BIN`），且約 2 分鐘的傳輸期間不可關閉印表機電源。
 
 ## 授權
 

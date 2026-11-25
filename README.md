@@ -75,22 +75,33 @@ Verify with `M115`: it should report **Marlin 2.1.2.10** and the build date.
 
 See [CR-TOUCH-BUILD.md](CR-TOUCH-BUILD.md) for troubleshooting.
 
-## Creality WiFi box
+## Creality WiFi box and remote updates
 
-The box on the network can be used for **monitoring and G-code control** (HTTP
-status API on port 81, anonymous FTP for its SD card, telnet shell). Device
-credentials are intentionally not documented here.
+The box provides monitoring, G-code control, and **remote firmware updates**.
 
-**Firmware updates through the box are not reliable on this hardware:**
+- Status API: `http://<box>/protocal.csp?fname=Info&opt=main&function=get`
+- FTP: anonymous access to the box SD card
+- Telnet shell: credentials are device-specific and intentionally omitted here
 
-- The box's built-in MCU OTA sends `M936 V2`, but the 4.2.7 bootloader does not
-  enter OTA mode — Creality's stock 4.2.7 firmware has no `M936` handler.
-- Marlin's binary file transfer (`M28 B1`) works in principle, but the box's
-  `prt_com` daemon interleaves its own polling traffic into the serial stream,
-  corrupting packets; a reliable retrying uploader is not available yet.
+### Remote firmware updates
 
-Therefore **use the SD card for firmware updates**. Monitoring and calibration
-over the box work well.
+A persistent uploader is installed on the box and starts at every boot:
+
+- `/mnt/creality/custom_start.sh` (registered in `/mnt/creality/_md5_app`)
+- `/mnt/creality/bft_daemon.sh`, which watches for `creality/bft/trigger`
+- `creality/bft/result.txt` records each upload attempt
+
+To prepare an update, run `python3 tools/gen_bft.py <firmware.bin>` on a PC with
+`BOX_PASS` set; it stages pre-generated BFT packets for all 256 sync values onto
+the box SD card. Then create `creality/bft/trigger` on the box. The daemon
+silences the box's polling daemon, enters `M28 B1` mode, sends one packet at a
+time, verifies the acknowledgements, and finishes with `M21` and `M997` so the
+printer reboots and the bootloader installs the new firmware.
+
+Requirements: the SD card must be in the printer (the firmware is written to it),
+the target filename must be a new unique 8.3 name each time (`FW.BIN` is used by
+the staged tool), and the printer must not be powered off during the ~2 minute
+transfer.
 
 ## License
 

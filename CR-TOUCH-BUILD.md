@@ -78,28 +78,13 @@ Verify with `M115` (expect Marlin 2.1.2.10) and `M211`
 - If probing is flaky: increase `BLTOUCH_DELAY` or enable
   `BLTOUCH_FORCE_SW_MODE` in `Marlin/Configuration_adv.h` and rebuild.
 
-## Remote updates and the Creality WiFi box
+## Remote updates via the Creality WiFi box
 
-The box exposes:
-
-- an HTTP status API on port 81 (`/protocal.csp?fname=Info&opt=main&function=get`),
-- anonymous FTP to its SD card,
-- a telnet shell (credentials are device-specific and intentionally omitted here).
-
-It is useful for **live monitoring, G-code control, and calibration**. However,
-**remote firmware flashing is not reliable on this hardware**:
-
-- The box's built-in MCU OTA sends `M936 V2` and waits for `mcu reset ok`, then
-  streams the firmware. On the 4.2.7 board the bootloader never enters OTA mode,
-  so the streamed bytes are interpreted by Marlin as invalid commands.
-  Creality's stock 4.2.7 firmware contains no `M936` handler.
-- Marlin's BFT (`M28 B1`) path was prototyped with a retry-capable uploader. It
-  moves most packets, but the box's `prt_com` daemon interleaves its own
-  `M105`/`M27` polling into the serial stream, causing packet corruption. No
-  reliable uploader is available yet.
-
-Use the SD card for firmware updates. Do not leave a partially uploaded `.bin`
-on a card that will be inserted into the printer.
+Remote firmware updates now work through the box using Marlin's BFT protocol.
+See [README.md](README.md#creality-wifi-box-and-remote-updates) for the procedure.
+The tooling is in [`tools/`](tools/): `gen_bft.py` stages the packets,
+`bft_daemon.sh` runs on the box, and `box_telnet.py` / `printer_gcode.py` are
+helpers for the box shell and G-code control.
 
 ## Optional
 

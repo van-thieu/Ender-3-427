@@ -74,27 +74,13 @@ python3 -m venv .venv
 - 探測不穩定：增加 `BLTOUCH_DELAY`，或在
   `Marlin/Configuration_adv.h` 啟用 `BLTOUCH_FORCE_SW_MODE` 後重新建置。
 
-## 遠端更新與 Creality WiFi 盒子
+## 透過 Creality WiFi 盒子遠端更新
 
-盒子提供：
-
-- 連接埠 81 的 HTTP 狀態 API
-  （`/protocal.csp?fname=Info&opt=main&function=get`），
-- 對其 SD 卡的匿名 FTP，
-- telnet shell（裝置憑證因安全考量不於此揭露）。
-
-它適合用於**即時監控、G-code 控制與校準**。然而，
-**在此硬體上遠端更新韌體並不可靠**：
-
-- 盒子內建的 MCU OTA 會傳送 `M936 V2` 並等待 `mcu reset ok`，然後串流韌體。
-  在 4.2.7 主機板上，開機載入器不會進入 OTA 模式，
-  因此串流位元組會被 Marlin 視為無效指令。
-  Creality 原廠 4.2.7 韌體沒有 `M936` 處理器。
-- Marlin 的 BFT（`M28 B1`）路徑已用具重傳機制的上傳器進行原型測試。
-  大部分封包可通過，但盒子的 `prt_com` 守護程序會把自身的
-  `M105`／`M27` 輪詢插入序列串流，造成封包損毀；目前尚無可靠的上傳器。
-
-請**使用 SD 卡更新韌體**。請勿將部分上傳的 `.bin` 留在即將插入印表機的卡片上。
+現在可透過盒子使用 Marlin 的 BFT 協定進行遠端韌體更新。
+程序請見 [README.zh-TW.md](README.zh-TW.md#creality-wifi-盒子與遠端更新)。
+工具位於 [`tools/`](tools/)：`gen_bft.py` 產生並放置封包、
+`bft_daemon.sh` 在盒子上執行，`box_telnet.py` / `printer_gcode.py`
+則用於盒子 shell 與 G-code 控制。
 
 ## 選用
 

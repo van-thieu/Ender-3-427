@@ -3,7 +3,7 @@ import os
 """Run commands on the Creality WiFi box over telnet and print the output."""
 import socket, sys, time
 
-HOST = "192.168.1.126"
+HOST = os.environ.get("BOX_HOST", "192.168.1.126")
 USER = "root"
 PW = os.environ.get("BOX_PASS", "")
 

@@ -7,7 +7,7 @@ Usage: python3 /tmp/printer_gcode.py "M115" "M114" "M851"
 import socket, sys, time
 from ftplib import FTP
 
-BOX = "192.168.1.126"
+BOX = os.environ.get("BOX_HOST", "192.168.1.126")
 USER, PW = "root", os.environ.get("BOX_PASS", "")
 
 

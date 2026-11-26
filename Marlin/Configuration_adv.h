@@ -921,7 +921,9 @@
 
   // Feature: Switch into SW mode after a deploy. It makes the output pulse longer. Can be useful
   //          in special cases, like noisy or filtered input configurations.
-  //#define BLTOUCH_FORCE_SW_MODE
+  //#define BLTOUCH_FORCE_SW_MODE // Leaves this CR-Touch clone stuck in a
+                                  // triggered/alarm state after the first probe,
+                                  // so G28/G30/G29 all fail. Default mode works.
 
   /**
    * Settings for BLTouch Smart 3.0 and 3.1
@@ -2185,11 +2187,15 @@
  */
 #if PROBE_SELECTED && !IS_KINEMATIC
   // The CR-Touch sits to the LEFT of the nozzle (X offset -30mm).
-  // Keep extra clearance so the probe stays on the bed.
+  // Keep extra clearance on X so the probe and nozzle stay on the bed.
   #define PROBING_MARGIN_LEFT  35
   #define PROBING_MARGIN_RIGHT 35
-  #define PROBING_MARGIN_FRONT 15
-  #define PROBING_MARGIN_BACK  15
+
+  // 15mm metal clips hold the glass bed on all four edges. Keep probe
+  // points at least 20mm in from FRONT/BACK so the pin clears the clips
+  // (15mm clip + 5mm safety margin).
+  #define PROBING_MARGIN_FRONT 20
+  #define PROBING_MARGIN_BACK  20
 #endif
 
 #if EITHER(MESH_BED_LEVELING, AUTO_BED_LEVELING_UBL)
@@ -4249,7 +4255,7 @@
 //
 // M43 - display pin status, toggle pins, watch pins, watch endstops & toggle LED, test servo probe
 //
-//#define PINS_DEBUGGING
+#define PINS_DEBUGGING   // M43 - raw pin states, needed to trace the CR-Touch signal
 
 // Enable Tests that will run at startup and produce a report
 //#define MARLIN_TEST_BUILD

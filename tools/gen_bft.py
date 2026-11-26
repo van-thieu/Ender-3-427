@@ -16,7 +16,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOX = os.environ.get("BOX_HOST", "192.168.1.126")
 FW = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
     REPO, "firmware/Ender3_4.2.7_CRTouch_OTA_Reply_Marlin2.1.2.10.bin")
-DEST = "FW.BIN"  # 8.3 filename the Creality bootloader will flash
+DEST = os.environ.get("BFT_DEST", "FW.BIN")  # 8.3 filename; use a NEW name each flash
 
 spec = importlib.util.spec_from_file_location(
     "MBP", os.path.join(REPO, "buildroot/share/scripts/MarlinBinaryProtocol.py"))
@@ -70,9 +70,9 @@ def main():
     f = ftplib.FTP(BOX, timeout=12)
     f.login("anonymous", "anonymous@")
     f.cwd("/mmcblk0p1/creality")
-    try: f.mkd("creality/bft")
+    try: f.mkd("bft")
     except ftplib.error_perm: pass
-    f.cwd("/mmcblk0p1/creality/bft")
+    f.cwd("bft")
     print("uploading", len(data), "bytes of firmware")
     for sync in range(256):
         stream, index = build(sync, data)
@@ -82,10 +82,13 @@ def main():
         f.storbinary("STOR close_%d.bin" % sync,
                      io.BytesIO(proto(sync).build_packet(0, 2, b"")))
     f.storbinary("STOR sync.bin", io.BytesIO(proto(0).build_packet(0, 1, b"")))
+    # Tell the daemon which 8.3 filename is baked into these streams so it
+    # logs the right target and the bootloader sees a fresh name.
+    f.storbinary("STOR fwname", io.BytesIO(DEST.encode()))
     for name in ["bft_daemon.sh", "custom_start.sh", "delay2.awk"]:
         f.storbinary("STOR " + name, open(os.path.join(REPO, "tools", name), "rb"))
     f.quit()
-    print("done - touch creality/bft/trigger on the box to start an upload")
+    print("done - restart bft_daemon.sh on the box, then touch creality/bft/trigger")
 
 
 if __name__ == "__main__":

@@ -1737,6 +1737,7 @@
 // Travel limits (linear=mm, rotational=°) after homing, corresponding to endstop positions.
 #define X_MIN_POS 0
 #define Y_MIN_POS 0
+// Remote-update verification build (distinct compile timestamp, no behavior change)
 #define Z_MIN_POS -5   // Keep Z home near 0: Marlin uses Z_MIN_POS as Z_HOME_POS,
                        // so -15 made the probe target -6.62 unable to reach the bed at -13.62
 #define X_MAX_POS X_BED_SIZE

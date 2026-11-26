@@ -66,16 +66,42 @@ current_sync() {
   grep -o 'ss[0-9]*,96,0\.1\.0' $PROBE | tail -1 | sed 's/ss\([0-9]*\).*/\1/'
 }
 
+# Watch the serial log while streaming. Marlin asks for a resend with "rsN";
+# it only waits PACKET_MAX_WAIT (500ms) for it, so detecting this after the
+# whole stream has finished is far too late - it closes the file and releases
+# the SD card. tail -f + awk with fflush() gives us the resend in real time.
+MONFILE=$BFT/resend.txt
+HALT=$BFT/halt
+
+start_monitor() {
+  rm -f $MONFILE
+  tail -f $LOG 2>/dev/null | awk '/rs[0-9][0-9]*/ {
+    match($0, /rs[0-9][0-9]*/); print substr($0, RSTART, RLENGTH); fflush()
+  }' > $MONFILE &
+  MONPID=$!
+}
+
+stop_monitor() {
+  [ -n "$MONPID" ] && kill $MONPID 2>/dev/null
+  MONPID=
+}
+
 # stream_once <sync> [first-line] - one whole packet per write, paced.
-# first-line is a 1-based line number in packets_<sync>.txt, used to resume
-# after Marlin asks for a resend with rs<N> (packet N == line N+1).
+# first-line is a 1-based line number in packets_<sync>.txt (packet N is
+# line N+1). If a resend is detected, write its packet number to $HALT and
+# stop streaming so the caller can resume from there.
 stream_once() {
   s=$1
   START=${2:-1}
+  rm -f $HALT
   exec 3>/dev/ttyUSB0
   sed -n "${START},\$p" $BFT/packets_$s.txt | while read OFF LEN; do
     dd if=$BFT/stream_$s.bin bs=1 skip=$OFF count=$LEN 2>/dev/null >&3
     awk -f $BFT/delay2.awk < /dev/null
+    if [ -s $MONFILE ] && [ ! -f $HALT ]; then
+      head -1 $MONFILE | sed 's/rs//' > $HALT
+    fi
+    [ -f $HALT ] && break
   done
   exec 3>&-
 }
@@ -127,27 +153,30 @@ do_upload() {
     note "attempt $ATTEMPT sync=$S"
     [ -f $BFT/stream_$S.bin ] || { note "no stream for sync $S"; break; }
     MARK=`wc -l < $LOG`
+    start_monitor
     stream_once $S 1
-    sleep 2
-    # Marlin may ask for a resend of packet N (rsN). Resume from N+1
-    # instead of restarting the whole upload - restarting never works
-    # because the printer stays in BFT mode with a stale sync.
+    # React to resend requests while streaming, not after. Each pass resumes
+    # at the requested packet (packet N is line N+1 in packets_<sync>.txt).
     R=0
-    while [ $R -lt 5 ]; do
-      sed -n "$((MARK + 1)),\$p" $LOG > $RECENT
-      RS=`grep -o 'rs[0-9][0-9]*' $RECENT | head -1 | sed 's/rs//'`
-      ACK=`grep -o 'ok[0-9][0-9]*' $RECENT | wc -l`
-      [ -n "$RS" ] || break
+    while [ $R -lt 8 ] && [ -f $HALT ]; do
+      RS=`cat $HALT`
+      # Ignore a malformed/empty resend - restarting from packet 1 would
+      # just corrupt a perfectly good transfer.
+      case "$RS" in
+        ''|*[!0-9]*) rm -f $HALT; break ;;
+      esac
       RESUME=$((RS + 1))
-      note "resend rs$RS - resuming from packet $RS (pass $R, ack=$ACK)"
-      MARK=`wc -l < $LOG`
+      note "real-time resend rs$RS - resuming from packet $RS (pass $R)"
+      rm -f $MONFILE
       stream_once $S $RESUME
-      sleep 2
       R=$((R+1))
     done
+    stop_monitor
+    sleep 2
     sed -n "$((MARK + 1)),\$p" $LOG > $RECENT
-    RS=`grep -o 'rs[0-9][0-9]*' $RECENT | head -1 | sed 's/rs//'`
     ACK=`grep -o 'ok[0-9][0-9]*' $RECENT | wc -l`
+    RS=
+    [ -f $HALT ] && RS=`cat $HALT`
     note "final resend=$RS ack=$ACK"
     if [ -n "$RS" ]; then
       note "still resending - exiting BFT mode before retry"
@@ -175,9 +204,13 @@ do_upload() {
       # Creality bootloader so it gets installed.
       echo "M21" > $FIFO
       sleep 3
-      echo "M20 F" > $FIFO
+      echo "M20" > $FIFO
       sleep 4
       log_tail 120
+      # Flush and release the SD so the BFT-written .bin is committed before
+      # the bootloader looks for it after M997.
+      echo "M22" > $FIFO
+      sleep 3
       echo "M997" > $FIFO
       note "M997 sent (install)"
       sleep 12
